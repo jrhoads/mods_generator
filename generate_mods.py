@@ -477,7 +477,7 @@ def process(dataHandler, outputEncoding):
             filename = os.path.join(MODS_DIR, row[filenameCol].strip() + u'_' 
                 + str(ext) + u'.mods')
             ext += 1
-        logger.info('Processing row %d to %s.' % (i+1, filename))
+        logger.info('Processing row %d to %s.' % (i, filename))
         mapper = Mapper(outputEncoding)
         #for each column that should be mapped, pass the mapping
         # info and this row's data to the mapper to create the MODS
