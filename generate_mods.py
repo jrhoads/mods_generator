@@ -464,7 +464,7 @@ def process(dataHandler, outputEncoding):
         logger.error('Could not get filename column!')
         sys.exit(1)
     #assume that data starts on third row
-    for i in xrange(3, totalRows):
+    for i in xrange(3, totalRows+1):
         #get list of unicode values from this record of the dataset
         row = dataHandler.get_row(i)
         filename = row[filenameCol].strip()
