@@ -1,7 +1,7 @@
 mods_generator
 ==============
 
-Tools for generating MODS files from datasets
+Tool for generating MODS files from datasets. Takes an spreadsheet or cvs file with MODS mapping information and generates a MODS file for each record.
 
 License
 =======
