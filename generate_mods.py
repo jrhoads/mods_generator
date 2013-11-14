@@ -5,7 +5,7 @@ in the mods_files directory, logging the output to dataset_mods.log.
 Run './generate_mods.py --help' to see various options.
 
 Notes: 
-1. The python xlrd and lxml modules are required.
+1. Requirements: xlrd, lxml, and bdrxml.
 2. The spreadsheet can be any version of Excel, or a CSV file.
 3. The first row of the dataset is for headers, the second row is for
     MODS mapping tags, and the rest of the rows are for the data.
@@ -31,9 +31,11 @@ import os
 import codecs
 import re
 from optparse import OptionParser
-from lxml import etree
 
+from lxml import etree
 import xlrd
+from eulxml.xmlmap import load_xmlobject_from_file
+from bdrxml import mods
 
 #set up logging to console & log file
 LOG_FILENAME = 'dataset_mods.log'
@@ -61,7 +63,7 @@ class DataHandler(object):
     which is what xlrd uses, and we convert all CSV data to unicode objects
     as well.
     '''
-    def __init__(self, filename, forceDates=False, sheet=1, inputEncoding='utf-8'):
+    def __init__(self, filename, inputEncoding='utf-8', sheet=1, ctrlRow=2, forceDates=False):
         '''Open file and get data from correct sheet.
         
         First, try opening the file as an excel spreadsheet.
@@ -72,6 +74,7 @@ class DataHandler(object):
         #set the date override value
         self.forceDates = forceDates
         self.inputEncoding = inputEncoding
+        self.ctrlRow = ctrlRow
         #open file
         try:
             self.book = xlrd.open_workbook(filename)
@@ -97,7 +100,7 @@ class DataHandler(object):
                 self.dataType = 'csv'
                 #CSV module doesn't handle unicode correctly, so temporarily
                 #   encode data as UTF-8, which it can handle.
-                csvReader = csv.reader(self.utf_8_encoder(csvFile), dialect)
+                csvReader = csv.reader(self._utf_8_encoder(csvFile), dialect)
                 #self.csvData is a list of lists of the row data
                 self.csvData = []
                 for row in csvReader:
@@ -113,27 +116,25 @@ class DataHandler(object):
                 csvFile.close()
                 sys.exit(1)
 
-    def utf_8_encoder(self, unicode_csv_data):
-        '''From docs.python.org/2.6/library/csv.html
-        
-        CSV module doesn't handle unicode objects, but should handle UTF-8 data.'''
-        for line in unicode_csv_data:
-            yield line.encode('utf-8')
+    def get_data_rows(self):
+        '''data rows will be all the rows after the control row'''
+        for i in xrange(self.ctrlRow+1, self._get_total_rows()+1): #xrange doesn't include the stop value
+            yield self.get_row(i)
 
     def get_control_row(self):
         '''Retrieve the row that controls MODS mapping locations.'''
-        #assume that the second row contains the mapping data.
-        return self.get_row(2)
+        return self.get_row(self.ctrlRow)
 
-    def get_filename_col(self):
-        '''Get index of column that contains filenames.'''
+    def get_id_col(self):
+        '''Get index of column that contains id (or filename).'''
+        ID_NAMES = [u'record name', u'filename', u'id']
         #try control row first
         for i, val in enumerate(self.get_control_row()):
-            if val in [u'record name', u'Filename']:
+            if val.lower() in ID_NAMES:
                 return i
         #try first row if needed
         for i, val in enumerate(self.get_row(1)):
-            if val in [u'record name', u'Filename']:
+            if val.lower() in ID_NAMES:
                 return i
         #return None if we didn't find anything
         return None
@@ -159,7 +160,7 @@ class DataHandler(object):
             #In a data column that's mapped to a date field, we could find a text
             #   string that looks like a date - we might want to reformat 
             #   that as well.
-            if index > 1:
+            if index > (self.ctrlRow-1):
                 for i, v in enumerate(self.get_control_row()):
                     if 'date' in v:
                         if isinstance(row[i], basestring):
@@ -212,7 +213,14 @@ class DataHandler(object):
         #finally return the row
         return row
 
-    def get_total_rows(self):
+    def _utf_8_encoder(self, unicode_csv_data):
+        '''From docs.python.org/2.6/library/csv.html
+        
+        CSV module doesn't handle unicode objects, but should handle UTF-8 data.'''
+        for line in unicode_csv_data:
+            yield line.encode('utf-8')
+
+    def _get_total_rows(self):
         '''Get total number of rows in the dataset.'''
         totalRows = 0
         if self.dataType == 'xlrd':
@@ -220,6 +228,7 @@ class DataHandler(object):
         elif self.dataType == 'csv':
             totalRows = len(self.csvData)
         return totalRows
+
 
 def process_text_date(strDate, forceDates=False):
     '''Take a text-based date and try to reformat it to yyyy-mm-dd if needed.
@@ -314,102 +323,217 @@ def process_text_date(strDate, forceDates=False):
 
 
 class Mapper(object):
-    '''Map data into a correct XML string representing the MODS.
-    
-    Each instance of this class can only handle 1 MODS object.
-    Note: we should be generating valid MODS, but we're not using a MODS (or 
-        XML) class.
-    Note: the get_mods function will parse the xml & return a 'pretty' version
-        of it.
-    '''
-    def __init__(self, encoding='utf-8'):
-        '''self._mods is just a simple string object.'''
-        #assume that the encoding value string is good utf-8 (or ascii) data
-        self._mods = u'<?xml version="1.0" encoding="' + unicode(encoding, 'utf-8') + u'"?>'
-        self._mods += u'<mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/ http://www.loc.gov/standards/mods/v3/mods-3-4.xsd">'
-        self.dataSeparator = u'|'
+    '''Map data into a Mods object.
+    Each instance of this class can only handle 1 MODS object.'''
+
+    def __init__(self, encoding='utf-8', parent_mods=None):
+        self.dataSeparator = u'||'
         self.encoding = encoding
+        self._parent_mods = parent_mods
+        #dict for keeping track of which fields we've cleared out the parent
+        # info for. So we can have multiple columns in the spreadsheet w/ the same field.
+        self._cleared_fields = {}
+        if parent_mods:
+            self._mods = parent_mods
+        else:
+            self._mods = mods.make_mods()
 
     def get_mods(self):
-        '''Returns a 'pretty' version of the self._mods unicode object with
-        the mods tag closed.
-        '''
-        mods = self._mods + u'</mods:mods>'
-        #pass a string to fromstring, not unicode
-        modsStr = mods.encode(self.encoding)
-        modsTree = etree.fromstring(modsStr)
-        modsPrettyStr = etree.tostring(modsTree, pretty_print=True,
-                xml_declaration=True, encoding=self.encoding)
-        return unicode(modsPrettyStr, self.encoding)
+        return self._mods
 
     def add_data(self, mods_loc, data):
         '''Method to actually put the data in the correct place of MODS obj.'''
-        logger.debug('Putting "%s" into %s' % (data, mods_loc))
-        #sanitize data
-        data = data.replace(u'&', u'&amp;')
-        data = data.replace(u'<', u'&lt;')
-        data = data.replace(u'>', u'&gt;')
         #parse location info into tags
         loc = LocationParser(mods_loc)
         tags = loc.get_tags()
         elements = loc.get_elements() #list of element names
-        #names take some different processing, so use a different function
-        if elements[0] == 'mods:name':
-            self._add_name_data(tags, elements, data)
+        data_vals = [data.strip() for data in data.split(self.dataSeparator)]
+        #handle various MODS elements
+        if elements[0]['element'] == u'mods:name':
+            if not self._cleared_fields.get(u'names', None):
+                self._mods.names = []
+                self._cleared_fields[u'names'] = True
+            self._add_name_data(tags, elements, data_vals)
             return
-        #check for multiple values that should go in separate tags
-        # eg. xyz || abc =>
-        #   <tag1><tag2>xyz</tag2></tag1>
-        #   <tag1><tag2>abc</tag2></tag1>
-        for d in  data.split(self.dataSeparator):
-            #open tags
-            for tag in tags[:]:
-                self._mods += tag
-            #add data
-            self._mods += d.strip()
-            #close tags
-            for el in reversed(elements[:]):
-                self._mods += u'</' + el + u'>'
+        elif elements[0]['element'] == u'mods:namePart':
+            #grab the last name that was added
+            name = self._mods.names[-1]
+            np = mods.NamePart(text=data)
+            if u'type' in elements[0][u'attributes']:
+                np.type = elements[0][u'attributes'][u'type']
+            name.name_parts.append(np)
+        elif elements[0][u'element'] == u'mods:titleInfo':
+            if not self._cleared_fields.get(u'title_info_list', None):
+                self._mods.title_info_list = []
+                self._cleared_fields[u'title_info_list'] = True
+            self._add_title_data(tags, elements, data_vals)
+            return
+        elif elements[0][u'element'] == u'mods:genre':
+            if not self._cleared_fields.get(u'genres', None):
+                self._mods.genres = []
+                self._cleared_fields[u'genres'] = True
+            for data in data_vals:
+                genre = mods.Genre(text=data)
+                if 'authority' in elements[0]['attributes']:
+                    genre.authority = elements[0]['attributes']['authority']
+                self._mods.genres.append(genre)
+        elif elements[0]['element'] == 'mods:originInfo':
+            if not self._cleared_fields.get(u'origin_info', None):
+                self._mods.origin_info = None
+                self._cleared_fields[u'origin_info'] = True
+                self._mods.create_origin_info()
+            if 'displayLabel' in elements[0]['attributes']:
+                self._mods.origin_info.label = elements[0]['attributes']['displayLabel']
+            for data in data_vals:
+                if elements[1]['element'] == 'mods:dateCreated':
+                    date = mods.DateCreated(date=data)
+                elif elements[1]['element'] == 'mods:dateOther':
+                    date = mods.DateOther(date=data)
+                else:
+                    print('unhandled originInfo element: %s' % elements)
+                    return
+                if 'encoding' in elements[1]['attributes']:
+                    date.encoding = elements[1]['attributes']['encoding']
+                if 'point' in elements[1]['attributes']:
+                    date.point = elements[1]['attributes']['point']
+                if 'keyDate' in elements[1]['attributes']:
+                    date.key_date = elements[1]['attributes']['keyDate']
+                self._mods.origin_info.other.append(date)
+        elif elements[0]['element'] == 'mods:physicalDescription':
+            if not self._cleared_fields.get(u'physical_description', None):
+                self._mods.physical_description = None
+                self._cleared_fields[u'physical_description'] = True
+                #can only have one physical description currently
+                self._mods.create_physical_description()
+            if elements[1]['element'] == 'mods:extent':
+                self._mods.physical_description.extent = data_vals[0]
+        elif elements[0]['element'] == 'mods:abstract':
+            if not self._cleared_fields.get(u'abstract', None):
+                self._mods.abstract = None
+                self._cleared_fields[u'abstract'] = True
+                #can only have one abstract currently
+                self._mods.create_abstract()
+            self._mods.abstract.text = data_vals[0]
+        elif elements[0]['element'] == 'mods:note':
+            if not self._cleared_fields.get(u'notes', None):
+                self._mods.notes = []
+                self._cleared_fields[u'notes'] = True
+            for data in data_vals:
+                note = mods.Note(text=data)
+                if 'type' in elements[0]['attributes']:
+                    note.type = elements[0]['attributes']['type']
+                if 'displayLabel' in elements[0]['attributes']:
+                    note.label = elements[0]['attributes']['displayLabel']
+                self._mods.notes.append(note)
+        elif elements[0]['element'] == 'mods:subject':
+            if not self._cleared_fields.get(u'subjects', None):
+                self._mods.subjects = []
+                self._cleared_fields[u'subjects'] = True
+            for data in data_vals:
+                subject = mods.Subject()
+                if elements[1]['element'] == 'mods:topic':
+                    subject.topic = data
+                elif elements[1]['element'] == 'mods:geographic':
+                    subject.geographic = data
+                elif elements[1]['element'] == 'mods:hierarchicalGeographic':
+                    hg = mods.HierarchicalGeographic()
+                    if elements[2]['element'] == 'mods:country':
+                        if 'data' in elements[2]:
+                            hg.country = elements[2]['data']
+                            if elements[3]['element'] == 'mods:state':
+                                hg.state = data
+                        else:
+                            hg.country = data
+                    subject.hierarchical_geographic = hg
+                self._mods.subjects.append(subject)
+        elif elements[0]['element'] == 'mods:identifier':
+            if not self._cleared_fields.get(u'identifiers', None):
+                self._mods.identifiers = []
+                self._cleared_fields[u'identifiers'] = True
+            for data in data_vals:
+                identifier = mods.Identifier(text=data)
+                if 'type' in elements[0]['attributes']:
+                    identifier.type = elements[0]['attributes']['type']
+                if 'displayLabel' in elements[0]['attributes']:
+                    identifier.label = elements[0]['attributes']['displayLabel']
+                self._mods.identifiers.append(identifier)
+        elif elements[0]['element'] == 'mods:location':
+            if not self._cleared_fields.get(u'locations', None):
+                self._mods.locations = []
+                self._cleared_fields[u'locations'] = True
+            if elements[1]['element'] == 'mods:physicalLocation':
+                for data in data_vals:
+                    loc = mods.Location(physical=data)
+                    self._mods.locations.append(loc)
 
-    def _add_name_data(self, tags, elements, data):
+    def _add_title_data(self, tags, elements, data_vals):
+        for data in data_vals:
+            title = mods.TitleInfo()
+            divs = data.split(u'#')
+            for element in elements[1:]:
+                if element[u'element'] == u'mods:title':
+                    title.title = divs[0]
+                elif element[u'element'] == u'mods:partName':
+                    if divs[1]:
+                        title.part_name = divs[1]
+                elif element[u'element'] == u'mods:partNumber':
+                    if divs[2]:
+                        title.part_number = divs[2]
+            self._mods.title_info_list.append(title)
+
+    def _add_name_data(self, tags, elements, data_vals):
         '''Method to handle more complicated name data. '''
-        logger.debug('_add_name_data: %s' % data)
-        #split into array of | sections (different people)
-        names = data.split(self.dataSeparator)
-        for name in names:
-            #open first tag we have
-            self._mods += tags[0] #mods:name
-            #we might have a name and then a role
+        for data in data_vals:
+            #elements[0] is mods:name
+            name = mods.Name()
+            if 'type' in elements[0]['attributes']:
+                name.type = elements[0]['attributes']['type']
+            #we might have a name and then a role, so split the data val
             # eg. John Smith#creator
-            divs = name.split(u'#')
-            #add namePart subelement
-            self._mods += tags[1]
-            self._mods += divs[0].strip()
-            self._mods += u'</mods:namePart>'
-            #add role subelement if present
-            if len(divs) > 1:
-                self._mods += u'<mods:role>'
-                self._mods += u'<mods:roleTerm>'
-                self._mods += divs[1].strip() + u'</mods:roleTerm>'
-                self._mods += u'</mods:role>'
-            #close <mods:name> tag
-            self._mods += u'</mods:name>'
+            divs = data.split(u'#')
+            role = None
+            role_attrs = {}
+            for element in elements[1:]:
+                if element['element'] == 'mods:namePart':
+                    np = mods.NamePart(text=divs[0])
+                    name.name_parts.append(np)
+                elif element['element'] == 'mods:role':
+                    pass
+                elif element['element'] == 'mods:roleTerm':
+                    #add role subelement if present
+                    if len(divs) > 1:
+                        role = mods.Role(text=divs[1])
+                        role_attrs = element['attributes']
+                    elif 'data' in element:
+                        role = mods.Role(text=element['data'])
+                        role_attrs = element['attributes']
+            if len(divs) > 1 and not role:
+                role = mods.Role(text=divs[1])
+            if role:
+                if 'type' in role_attrs:
+                    role.type = role_attrs['type']
+                name.roles.append(role)
+            self._mods.names.append(name)
+
 
 class LocationParser(object):
     '''Small class for parsing dataset location instructions.'''
     def __init__(self, data):
         self.data = data
         self.tags = [] #list of full tags
-        self.elements = [] #list of element names
-        #self.attributes = [] #list of attributes for each element
-        self.parse()
+        self.elements = [] #list of element dicts
+        self._parse()
+
     def get_tags(self):
         return self.tags
+
     def get_elements(self):
         return self.elements
-    #def get_attributes(self):
-        #return self.attributes
-    def parse(self):
+
+    def get_attributes(self):
+        return self.attributes
+
+    def _parse(self):
         '''Get the first Mods field we're looking at in this string.'''
         #first strip off leading & trailing whitespace
         data = self.data.strip()
@@ -420,75 +544,94 @@ class LocationParser(object):
             endTagPos = data.find(u'>')
             if endTagPos > startTagPos:
                 tag = data[startTagPos:endTagPos+1]
+                #remove first tag from data for the next loop
+                data = data[endTagPos+1:]
+                if tag[:2] == u'</':
+                    continue
                 self.tags.append(tag)
             else:
                 raise Exception('Error parsing "%s"!' % data)
-            #remove first tag from data
-            data = data[endTagPos+1:]
             #get element name and attributes to put in list
             space = tag.find(u' ')
             if space > 0:
                 name = tag[1:space]
-                #attributes = self.parse_attributes(tag[space:-1])
+                attributes = self._parse_attributes(tag[space:-1])
             else:
                 name = tag[1:-1]
-                #attributes = {}
-            self.elements.append(name)
-            #self.attributes.append(attributes)
-    #def parse_attributes(self, data):
-        #data = data.strip()
-        #parse attributes into dict
-        #attributes = {}
-        #while len(data) > 0:
-            #equal = data.find('=')
-            #attr = data[:equal].strip()
-            #valStart = data.find('"', equal+1)
-            #valEnd = data.find('"', valStart+1)
-            #if valEnd > valStart:
-                #val = data[valStart+1:valEnd]
-                #attributes[attr] = val
-                #data = data[valEnd+1:].strip()
-            #else:
-                #logger.error('Error parsing attributes. data = "%s"' % data)
-                #raise Exception('Error parsing attributes!')
-        #return attributes
+                attributes = {}
+            #there could be some text before the next tag
+            text = None
+            if data:
+                next_tag_start = data.find(u'<')
+                if next_tag_start == 0:
+                    pass
+                elif next_tag_start == -1:
+                    text = data
+                    data = ''
+                else:
+                    text = data[:next_tag_start]
+                    data = data[next_tag_start:]
+            if text:
+                self.elements.append({'element': name, 'attributes': attributes, 'data': text})
+            else:
+                self.elements.append({'element': name, 'attributes': attributes})
+                    
+
+    def _parse_attributes(self, data):
+        data = data.strip()
+        attributes = {}
+        while len(data) > 0:
+            equal = data.find('=')
+            attr = data[:equal].strip()
+            valStart = data.find('"', equal+1)
+            valEnd = data.find('"', valStart+1)
+            if valEnd > valStart:
+                val = data[valStart+1:valEnd]
+                attributes[attr] = val
+                data = data[valEnd+1:].strip()
+            else:
+                logger.error('Error parsing attributes. data = "%s"' % data)
+                raise Exception('Error parsing attributes!')
+        return attributes
 
 
-def process(dataHandler, outputEncoding):
+def process(dataHandler):
     '''Function to go through all the data and process it.'''
     #get dicts of columns that should be mapped & where they go in MODS
-    colsToMap = dataHandler.get_cols_to_map()
-    totalRows = dataHandler.get_total_rows()
-    filenameCol = dataHandler.get_filename_col()
-    if filenameCol is None:
-        logger.error('Could not get filename column!')
+    cols_to_map = dataHandler.get_cols_to_map()
+    id_col = dataHandler.get_id_col()
+    if id_col is None:
+        logger.error('Could not get id column!')
         sys.exit(1)
-    #assume that data starts on third row
-    for i in xrange(3, totalRows+1):
-        #get list of unicode values from this record of the dataset
-        row = dataHandler.get_row(i)
-        filename = row[filenameCol].strip()
+    index = 1
+    for row in dataHandler.get_data_rows():
+        filename = row[id_col].strip()
         if len(filename) == 0:
-            logger.warning('No filename defined for row %d. Skipping.' % (i+1))
+            logger.warning('No filename defined for row %d. Skipping.' % (index))
             continue
         filename = os.path.join(MODS_DIR, filename + u'.mods')
+        #load parent mods object if it exists
+        parent_mods = None
+        if os.path.exists(filename):
+            parent_mods = load_xmlobject_from_file(filename, mods.Mods)
         ext = 1
         while os.path.exists(filename):
-            filename = os.path.join(MODS_DIR, row[filenameCol].strip() + u'_' 
+            filename = os.path.join(MODS_DIR, row[id_col].strip() + u'_' 
                 + str(ext) + u'.mods')
             ext += 1
-        logger.info('Processing row %d to %s.' % (i, filename))
-        mapper = Mapper(outputEncoding)
+        logger.info('Processing row %d to %s.' % (index, filename))
+        mapper = Mapper(parent_mods=parent_mods)
         #for each column that should be mapped, pass the mapping
         # info and this row's data to the mapper to create the MODS
         for i, val in enumerate(row):
-            if i in colsToMap and len(val) > 0:
-                mapper.add_data(colsToMap[i], val)
-        mods = mapper.get_mods()
-        logger.debug(mods)
-        #write data to a file (with the desired output encoding)
-        with codecs.open(filename, 'w', outputEncoding) as f:
-            f.write(mods)
+            if i in cols_to_map and len(val) > 0:
+                mapper.add_data(cols_to_map[i], val)
+        mods_obj = mapper.get_mods()
+        mods_data = unicode(mods_obj.serializeDocument(pretty=True), 'utf-8')
+        with codecs.open(filename, 'w', 'utf-8') as f:
+            f.write(mods_data)
+        index = index + 1
+
 
 if __name__ == '__main__':
     logger.info('Processing dataset to MODS files')
@@ -500,13 +643,12 @@ if __name__ == '__main__':
     parser.add_option('-s', '--sheet',
                     action='store', dest='sheet', default=1,
                     help='specify the sheet number (starting at 1) in an Excel spreadsheet')
+    parser.add_option('-r', '--ctrl_row',
+                    action='store', dest='row', default=2,
+                    help='specify the control row number (starting at 1) in an Excel spreadsheet')
     parser.add_option('-i', '--input-encoding',
                     action='store', dest='in_enc', default='utf-8',
                     help='specify the input encoding for CSV files (default is UTF-8)')
-    #Had a problem when I tried testing with ebcdic (cp500). Not sure which ones work & which don't.
-    parser.add_option('-o', '--output-encoding',
-                    action='store', dest='out_enc', default='utf-8',
-                    help='specify the encoding of the output MODS files (default is UTF-8)')
     (options, args) = parser.parse_args()
     #make sure we have a directory to put the mods files in
     try:
@@ -518,7 +660,7 @@ if __name__ == '__main__':
             #dir creation error - re-raise it
             raise
     #set up data handler & process data
-    dataHandler = DataHandler(args[0], options.force_dates, int(options.sheet), options.in_enc)
-    process(dataHandler, options.out_enc)
+    dataHandler = DataHandler(args[0], options.in_enc, int(options.sheet), int(options.row), options.force_dates)
+    process(dataHandler)
     sys.exit()
 
