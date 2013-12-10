@@ -179,10 +179,10 @@ class TestMapper(unittest.TestCase):
     '''Test Mapper class.'''
 
     EMPTY_MODS = u'''<?xml version='1.0' encoding='UTF-8'?>
-<mods:mods xmlns:mods="http://www.loc.gov/mods/v3"/>
+<mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-4.xsd"/>
 '''
     FULL_MODS = u'''<?xml version='1.0' encoding='UTF-8'?>
-<mods:mods xmlns:mods="http://www.loc.gov/mods/v3">
+<mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-4.xsd">
   <mods:titleInfo>
     <mods:title>é. 1 Test</mods:title>
     <mods:partName>part 1</mods:partName>
@@ -194,6 +194,9 @@ class TestMapper(unittest.TestCase):
   <mods:originInfo displayLabel="Date Ądded to Colléction">
     <mods:dateOther encoding="w3cdtf" keyDate="yes">2010-01-31</mods:dateOther>
     <mods:dateCreated encoding="w3cdtf" point="end">7/13/1899</mods:dateCreated>
+    <mods:dateCreated encoding="w3cdtf">1972-10-1973-07-07</mods:dateCreated>
+    <mods:dateCreated encoding="w3cdtf" point="start" keyDate="yes">1972-10</mods:dateCreated>
+    <mods:dateCreated encoding="w3cdtf" point="end">1973-07-07</mods:dateCreated>
   </mods:originInfo>
   <mods:subject>
     <mods:topic>PROGRĄMMING</mods:topic>
@@ -239,6 +242,7 @@ class TestMapper(unittest.TestCase):
 '''
 
     def test_mods_output(self):
+        self.maxDiff = None
         m1 = Mapper()
         mods = m1.get_mods()
         self.assertTrue(isinstance(mods, Mods))
@@ -263,6 +267,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:namePart type="date">', u'1799-1889')
         m.add_data(u'<mods:name type="personal"><mods:namePart>#<mods:role><mods:roleTerm type="text">winner', u'Bob')
         m.add_data(u'<mods:originInfo><mods:dateCreated encoding="w3cdtf" point="end">', u'7/13/1899')
+        m.add_data(u'<mods:originInfo><mods:dateCreated encoding="w3cdtf">#<mods:dateCreated encoding="w3cdtf" point="start" keyDate="yes">#<mods:dateCreated encoding="w3cdtf" point="end">', u'1972-10-1973-07-07#1972-10#1973-07-07')
         m.add_data(u'<mods:note displayLabel="note label">', u'Note 1&2')
         m.add_data(u'<mods:note>', u'3<4')
         m.add_data(u'<mods:location><mods:physicalLocation>', u'zzz')
@@ -276,7 +281,6 @@ class TestMapper(unittest.TestCase):
         #print('mods_data:\n%s' % mods_data)
         #print('FULL_MODS:\n%s' % self.FULL_MODS)
         #this does assume that the attributes will always be written out in the same order
-        self.maxDiff = 1000000
         self.assertEqual(mods_data, self.FULL_MODS)
 
 if __name__ == '__main__':

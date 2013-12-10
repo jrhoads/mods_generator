@@ -127,7 +127,7 @@ class DataHandler(object):
 
     def get_id_col(self):
         '''Get index of column that contains id (or filename).'''
-        ID_NAMES = [u'record name', u'filename', u'id']
+        ID_NAMES = [u'record name', u'filename', u'id', u'file names']
         #try control row first
         for i, val in enumerate(self.get_control_row()):
             if val.lower() in ID_NAMES:
@@ -382,23 +382,8 @@ class Mapper(object):
                 self._mods.origin_info = None
                 self._cleared_fields[u'origin_info'] = True
                 self._mods.create_origin_info()
-            if 'displayLabel' in elements[0]['attributes']:
-                self._mods.origin_info.label = elements[0]['attributes']['displayLabel']
-            for data in data_vals:
-                if elements[1]['element'] == 'mods:dateCreated':
-                    date = mods.DateCreated(date=data)
-                elif elements[1]['element'] == 'mods:dateOther':
-                    date = mods.DateOther(date=data)
-                else:
-                    print('unhandled originInfo element: %s' % elements)
-                    return
-                if 'encoding' in elements[1]['attributes']:
-                    date.encoding = elements[1]['attributes']['encoding']
-                if 'point' in elements[1]['attributes']:
-                    date.point = elements[1]['attributes']['point']
-                if 'keyDate' in elements[1]['attributes']:
-                    date.key_date = elements[1]['attributes']['keyDate']
-                self._mods.origin_info.other.append(date)
+            self._add_origin_info_data(tags, elements, data_vals)
+            return
         elif elements[0]['element'] == 'mods:physicalDescription':
             if not self._cleared_fields.get(u'physical_description', None):
                 self._mods.physical_description = None
@@ -514,6 +499,33 @@ class Mapper(object):
                     role.type = role_attrs['type']
                 name.roles.append(role)
             self._mods.names.append(name)
+
+    def _add_origin_info_data(self, tags, elements, data_vals):
+        if 'displayLabel' in elements[0]['attributes']:
+            self._mods.origin_info.label = elements[0]['attributes']['displayLabel']
+        for data in data_vals:
+            divs = data.split(u'#')
+            for index, el in enumerate(elements[1:]):
+                if el['element'] == 'mods:dateCreated':
+                    date = mods.DateCreated(date=divs[index])
+                    date = self._set_date_attributes(date, el['attributes'])
+                    self._mods.origin_info.created.append(date)
+                elif el['element'] == 'mods:dateOther':
+                    date = mods.DateOther(date=divs[index])
+                    date = self._set_date_attributes(date, el['attributes'])
+                    self._mods.origin_info.other.append(date)
+                else:
+                    print('unhandled originInfo element: %s' % elements)
+                    return
+
+    def _set_date_attributes(self, date, attributes):
+        if 'encoding' in attributes:
+            date.encoding = attributes['encoding']
+        if 'point' in attributes:
+            date.point = attributes['point']
+        if 'keyDate' in attributes:
+            date.key_date = attributes['keyDate']
+        return date
 
 
 class LocationParser(object):
