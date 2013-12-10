@@ -392,6 +392,11 @@ class Mapper(object):
                 self._mods.create_physical_description()
             if elements[1]['element'] == 'mods:extent':
                 self._mods.physical_description.extent = data_vals[0]
+        elif elements[0]['element'] == 'mods:typeOfResource':
+            if not self._cleared_fields.get(u'typeOfResource', None):
+                self._mods.resource_type = None
+                self._cleared_fields[u'typeOfResource'] = True
+            self._mods.resource_type = data_vals[0]
         elif elements[0]['element'] == 'mods:abstract':
             if not self._cleared_fields.get(u'abstract', None):
                 self._mods.abstract = None

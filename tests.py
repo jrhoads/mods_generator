@@ -238,6 +238,7 @@ class TestMapper(unittest.TestCase):
   <mods:location>
     <mods:physicalLocation>zzz</mods:physicalLocation>
   </mods:location>
+  <mods:typeOfResource>video</mods:typeOfResource>
 </mods:mods>
 '''
 
@@ -272,6 +273,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:note>', u'3<4')
         m.add_data(u'<mods:location><mods:physicalLocation>', u'zzz')
         m.add_data(u'<mods:note>', u'another note')
+        m.add_data(u'<mods:typeOfResource>', u'video')
         mods = m.get_mods()
         mods_data = unicode(mods.serializeDocument(pretty=True), 'utf-8')
         self.assertTrue(isinstance(mods, Mods))
@@ -286,3 +288,4 @@ class TestMapper(unittest.TestCase):
 if __name__ == '__main__':
     runner = unittest.TextTestRunner(verbosity=2)
     unittest.main(testRunner=runner)
+
