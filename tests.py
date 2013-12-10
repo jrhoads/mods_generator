@@ -239,6 +239,9 @@ class TestMapper(unittest.TestCase):
     <mods:physicalLocation>zzz</mods:physicalLocation>
   </mods:location>
   <mods:typeOfResource>video</mods:typeOfResource>
+  <mods:language>
+    <mods:languageTerm authority="iso639-2b" type="code">eng</mods:languageTerm>
+  </mods:language>
 </mods:mods>
 '''
 
@@ -274,6 +277,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:location><mods:physicalLocation>', u'zzz')
         m.add_data(u'<mods:note>', u'another note')
         m.add_data(u'<mods:typeOfResource>', u'video')
+        m.add_data(u'<mods:language><mods:languageTerm authority="iso639-2b" type="code">', u'eng')
         mods = m.get_mods()
         mods_data = unicode(mods.serializeDocument(pretty=True), 'utf-8')
         self.assertTrue(isinstance(mods, Mods))

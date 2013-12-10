@@ -368,6 +368,19 @@ class Mapper(object):
                 self._cleared_fields[u'title_info_list'] = True
             self._add_title_data(tags, elements, data_vals)
             return
+        elif elements[0][u'element'] == u'mods:language':
+            if not self._cleared_fields.get(u'languages', None):
+                self._mods.languages = []
+                self._cleared_fields[u'languages'] = True
+            for data in data_vals:
+                language = mods.Language()
+                language_term = mods.LanguageTerm(text=data)
+                if 'authority' in elements[1]['attributes']:
+                    language_term.authority = elements[1]['attributes']['authority']
+                if 'type' in elements[1]['attributes']:
+                    language_term.type = elements[1]['attributes']['type']
+                language.terms.append(language_term)
+                self._mods.languages.append(language)
         elif elements[0][u'element'] == u'mods:genre':
             if not self._cleared_fields.get(u'genres', None):
                 self._mods.genres = []
