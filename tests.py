@@ -294,7 +294,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:subject><mods:topic>', u'Recursion')
         m.add_data(u'<mods:subject><mods:geographic>', u'United States')
         m.add_data(u'<mods:subject><mods:hierarchicalGeographic><mods:country>United States</mods:country><mods:state>', u'Pennsylvania')
-        m.add_data(u'<mods:name type="personal"><mods:namePart>', u'Smith#creator || Jones, T.')
+        m.add_data(u'<mods:name type="personal"><mods:namePart>#<mods:role><mods:roleTerm>', u'Smith#creator || Jones, T.')
         m.add_data(u'<mods:namePart type="date">', u'1799-1889')
         m.add_data(u'<mods:name type="personal"><mods:namePart>#<mods:role><mods:roleTerm type="text">winner', u'Bob')
         m.add_data(u'<mods:name type="personal"><mods:namePart>#<mods:namePart type="date">#<mods:namePart type="termsOfAddress">', u'Fob, Bob || Smith, Ted#1900-2013#Sir')

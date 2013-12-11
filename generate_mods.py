@@ -345,204 +345,208 @@ class Mapper(object):
         '''Method to actually put the data in the correct place of MODS obj.'''
         #parse location info into elements/attributes
         loc = LocationParser(mods_loc)
-        elements = loc.get_elements() #list of element names
+        base_element = loc.get_base_element()
+        location_sections = loc.get_sections()
         data_vals = [data.strip() for data in data.split(self.dataSeparator)]
         #handle various MODS elements
-        if elements[0]['element'] == u'mods:name':
+        if base_element['element'] == u'mods:name':
             if not self._cleared_fields.get(u'names', None):
                 self._mods.names = []
                 self._cleared_fields[u'names'] = True
-            self._add_name_data(elements, data_vals)
-            return
-        elif elements[0]['element'] == u'mods:namePart':
+            self._add_name_data(base_element, location_sections, data_vals)
+        elif base_element['element'] == u'mods:namePart':
             #grab the last name that was added
             name = self._mods.names[-1]
             np = mods.NamePart(text=data)
-            if u'type' in elements[0][u'attributes']:
-                np.type = elements[0][u'attributes'][u'type']
+            if u'type' in base_element[u'attributes']:
+                np.type = base_element[u'attributes'][u'type']
             name.name_parts.append(np)
-        elif elements[0][u'element'] == u'mods:titleInfo':
+        elif base_element[u'element'] == u'mods:titleInfo':
             if not self._cleared_fields.get(u'title_info_list', None):
                 self._mods.title_info_list = []
                 self._cleared_fields[u'title_info_list'] = True
-            self._add_title_data(elements, data_vals)
-            return
-        elif elements[0][u'element'] == u'mods:language':
+            self._add_title_data(location_sections, data_vals)
+        elif base_element[u'element'] == u'mods:language':
             if not self._cleared_fields.get(u'languages', None):
                 self._mods.languages = []
                 self._cleared_fields[u'languages'] = True
             for data in data_vals:
                 language = mods.Language()
                 language_term = mods.LanguageTerm(text=data)
-                if 'authority' in elements[1]['attributes']:
-                    language_term.authority = elements[1]['attributes']['authority']
-                if 'type' in elements[1]['attributes']:
-                    language_term.type = elements[1]['attributes']['type']
+                if u'authority' in location_sections[0][0]['attributes']:
+                    language_term.authority = location_sections[0][0]['attributes']['authority']
+                if u'type' in location_sections[0][0]['attributes']:
+                    language_term.type = location_sections[0][0][u'attributes'][u'type']
                 language.terms.append(language_term)
                 self._mods.languages.append(language)
-        elif elements[0][u'element'] == u'mods:genre':
+        elif base_element[u'element'] == u'mods:genre':
             if not self._cleared_fields.get(u'genres', None):
                 self._mods.genres = []
                 self._cleared_fields[u'genres'] = True
             for data in data_vals:
                 genre = mods.Genre(text=data)
-                if 'authority' in elements[0]['attributes']:
-                    genre.authority = elements[0]['attributes']['authority']
+                if 'authority' in base_element['attributes']:
+                    genre.authority = base_element['attributes']['authority']
                 self._mods.genres.append(genre)
-        elif elements[0]['element'] == 'mods:originInfo':
+        elif base_element['element'] == 'mods:originInfo':
             if not self._cleared_fields.get(u'origin_info', None):
                 self._mods.origin_info = None
                 self._cleared_fields[u'origin_info'] = True
                 self._mods.create_origin_info()
-            self._add_origin_info_data(elements, data_vals)
-            return
-        elif elements[0]['element'] == 'mods:physicalDescription':
+            self._add_origin_info_data(base_element, location_sections, data_vals)
+        elif base_element['element'] == 'mods:physicalDescription':
             if not self._cleared_fields.get(u'physical_description', None):
                 self._mods.physical_description = None
                 self._cleared_fields[u'physical_description'] = True
                 #can only have one physical description currently
                 self._mods.create_physical_description()
-            if elements[1]['element'] == 'mods:extent':
+            if location_sections[0][0]['element'] == 'mods:extent':
                 self._mods.physical_description.extent = data_vals[0]
-        elif elements[0]['element'] == 'mods:typeOfResource':
+        elif base_element['element'] == 'mods:typeOfResource':
             if not self._cleared_fields.get(u'typeOfResource', None):
                 self._mods.resource_type = None
                 self._cleared_fields[u'typeOfResource'] = True
             self._mods.resource_type = data_vals[0]
-        elif elements[0]['element'] == 'mods:abstract':
+        elif base_element['element'] == 'mods:abstract':
             if not self._cleared_fields.get(u'abstract', None):
                 self._mods.abstract = None
                 self._cleared_fields[u'abstract'] = True
                 #can only have one abstract currently
                 self._mods.create_abstract()
             self._mods.abstract.text = data_vals[0]
-        elif elements[0]['element'] == 'mods:note':
+        elif base_element['element'] == 'mods:note':
             if not self._cleared_fields.get(u'notes', None):
                 self._mods.notes = []
                 self._cleared_fields[u'notes'] = True
             for data in data_vals:
                 note = mods.Note(text=data)
-                if 'type' in elements[0]['attributes']:
-                    note.type = elements[0]['attributes']['type']
-                if 'displayLabel' in elements[0]['attributes']:
-                    note.label = elements[0]['attributes']['displayLabel']
+                if 'type' in base_element['attributes']:
+                    note.type = base_element['attributes']['type']
+                if 'displayLabel' in base_element['attributes']:
+                    note.label = base_element['attributes']['displayLabel']
                 self._mods.notes.append(note)
-        elif elements[0]['element'] == 'mods:subject':
+        elif base_element['element'] == 'mods:subject':
             if not self._cleared_fields.get(u'subjects', None):
                 self._mods.subjects = []
                 self._cleared_fields[u'subjects'] = True
             for data in data_vals:
                 subject = mods.Subject()
-                if elements[1]['element'] == 'mods:topic':
+                section = location_sections[0]
+                if section[0]['element'] == 'mods:topic':
                     subject.topic = data
-                elif elements[1]['element'] == 'mods:geographic':
+                elif section[0]['element'] == 'mods:geographic':
                     subject.geographic = data
-                elif elements[1]['element'] == 'mods:hierarchicalGeographic':
+                elif section[0]['element'] == 'mods:hierarchicalGeographic':
                     hg = mods.HierarchicalGeographic()
-                    if elements[2]['element'] == 'mods:country':
-                        if 'data' in elements[2]:
-                            hg.country = elements[2]['data']
-                            if elements[3]['element'] == 'mods:state':
+                    if section[1]['element'] == 'mods:country':
+                        if 'data' in section[1]:
+                            hg.country = section[1]['data']
+                            if section[2]['element'] == 'mods:state':
                                 hg.state = data
                         else:
                             hg.country = data
                     subject.hierarchical_geographic = hg
                 self._mods.subjects.append(subject)
-        elif elements[0]['element'] == 'mods:identifier':
+        elif base_element['element'] == 'mods:identifier':
             if not self._cleared_fields.get(u'identifiers', None):
                 self._mods.identifiers = []
                 self._cleared_fields[u'identifiers'] = True
             for data in data_vals:
                 identifier = mods.Identifier(text=data)
-                if 'type' in elements[0]['attributes']:
-                    identifier.type = elements[0]['attributes']['type']
-                if 'displayLabel' in elements[0]['attributes']:
-                    identifier.label = elements[0]['attributes']['displayLabel']
+                if 'type' in base_element['attributes']:
+                    identifier.type = base_element['attributes']['type']
+                if 'displayLabel' in base_element['attributes']:
+                    identifier.label = base_element['attributes']['displayLabel']
                 self._mods.identifiers.append(identifier)
-        elif elements[0]['element'] == 'mods:location':
+        elif base_element['element'] == u'mods:location':
             if not self._cleared_fields.get(u'locations', None):
                 self._mods.locations = []
                 self._cleared_fields[u'locations'] = True
-            if elements[1]['element'] == 'mods:physicalLocation':
+            if location_sections[0][0]['element'] == u'mods:physicalLocation':
                 for data in data_vals:
                     loc = mods.Location(physical=data)
                     self._mods.locations.append(loc)
 
-    def _add_title_data(self, elements, data_vals):
-        for data in data_vals:
+    def _add_title_data(self, location_sections, data_vals):
+        for data in [data for data in data_vals if data]: #skip any empty data sections
             title = mods.TitleInfo()
-            divs = data.split(u'#')
-            for element in elements[1:]:
-                if element[u'element'] == u'mods:title':
-                    title.title = divs[0]
-                elif element[u'element'] == u'mods:partName':
-                    if divs[1]:
-                        title.part_name = divs[1]
-                elif element[u'element'] == u'mods:partNumber':
-                    if divs[2]:
-                        title.part_number = divs[2]
+            for section, div in zip(location_sections, data.split(u'#')):
+                for element in section:
+                    if element[u'element'] == u'mods:title':
+                        title.title = div
+                    elif element[u'element'] == u'mods:partName':
+                        title.part_name = div
+                    elif element[u'element'] == u'mods:partNumber':
+                        title.part_number = div
             self._mods.title_info_list.append(title)
 
-    def _add_name_data(self, elements, data_vals):
+    def _add_name_data(self, base_element, location_sections, data_vals):
         '''Method to handle more complicated name data. '''
-        for data in data_vals:
-            #elements[0] is mods:name
-            name = mods.Name()
-            if 'type' in elements[0]['attributes']:
-                name.type = elements[0]['attributes']['type']
-            #we might have a name and then something else, so split the data val
-            # eg. John Smith#creator or John Smith#1900-2000
-            divs = data.split(u'#')
-            role = None
-            role_attrs = {}
-            for element in elements[1:]:
-                #handle base name
-                if element['element'] == 'mods:namePart' and 'type' not in element['attributes']:
-                    np = mods.NamePart(text=divs[0])
-                    name.name_parts.append(np)
-                elif element['element'] == 'mods:role':
-                    pass
-                elif element['element'] == 'mods:roleTerm':
-                    #add role subelement if present
-                    if len(divs) > 1:
-                        role = mods.Role(text=divs[1])
+        for data in [data for data in data_vals if data]: #skip any empty data sections
+            name = mods.Name() #we're always going to be creating a name
+            if u'type' in base_element[u'attributes']:
+                name.type = base_element[u'attributes'][u'type']
+            data_divs = data.split(u'#')
+            for index, section in enumerate(location_sections):
+                try:
+                    div = data_divs[index].strip()
+                except:
+                    div = None
+                #make sure we have data for this section (except for mods:role, which could just have a constant)
+                if not div and section[0][u'element'] != u'mods:role':
+                    continue
+                for element in section:
+                    #handle base name
+                    if element['element'] == u'mods:namePart' and u'type' not in element['attributes']:
+                        np = mods.NamePart(text=div)
+                        name.name_parts.append(np)
+                    elif element[u'element'] == u'mods:namePart' and u'type' in element[u'attributes']:
+                        np = mods.NamePart(text=div)
+                        np.type = element[u'attributes'][u'type']
+                        name.name_parts.append(np)
+                    elif element['element'] == u'mods:roleTerm':
                         role_attrs = element['attributes']
-                    elif 'data' in element:
-                        role = mods.Role(text=element['data'])
-                        role_attrs = element['attributes']
-            if len(divs) > 1 and not role:
-                role = mods.Role(text=divs[1])
-            if role:
-                if 'type' in role_attrs:
-                    role.type = role_attrs['type']
-                name.roles.append(role)
+                        if element[u'data']:
+                            role = mods.Role(text=element['data'])
+                        else:
+                            if div:
+                                role = mods.Role(text=div)
+                            else:
+                                continue
+                        if u'type' in role_attrs:
+                            role.type = role_attrs['type']
+                        if u'authority' in role_attrs:
+                            role.authority = role_attrs[u'authority']
+                        name.roles.append(role)
             self._mods.names.append(name)
 
-    def _add_origin_info_data(self, elements, data_vals):
-        if 'displayLabel' in elements[0]['attributes']:
-            self._mods.origin_info.label = elements[0]['attributes']['displayLabel']
+    def _add_origin_info_data(self, base_element, location_sections, data_vals):
+        if u'displayLabel' in base_element['attributes']:
+            self._mods.origin_info.label = base_element[u'attributes'][u'displayLabel']
         for data in data_vals:
             divs = data.split(u'#')
-            for index, el in enumerate(elements[1:]):
-                if el['element'] == 'mods:dateCreated':
+            for index, section in enumerate(location_sections):
+                if not divs[index]:
+                    continue
+                if section[0][u'element'] == u'mods:dateCreated':
                     date = mods.DateCreated(date=divs[index])
-                    date = self._set_date_attributes(date, el['attributes'])
+                    date = self._set_date_attributes(date, section[0][u'attributes'])
                     self._mods.origin_info.created.append(date)
-                elif el['element'] == 'mods:dateOther':
+                elif section[0][u'element'] == u'mods:dateOther':
                     date = mods.DateOther(date=divs[index])
-                    date = self._set_date_attributes(date, el['attributes'])
+                    date = self._set_date_attributes(date, section[0][u'attributes'])
                     self._mods.origin_info.other.append(date)
                 else:
-                    print('unhandled originInfo element: %s' % elements)
+                    print(u'unhandled originInfo element: %s' % section)
                     return
 
     def _set_date_attributes(self, date, attributes):
-        if 'encoding' in attributes:
-            date.encoding = attributes['encoding']
-        if 'point' in attributes:
-            date.point = attributes['point']
-        if 'keyDate' in attributes:
-            date.key_date = attributes['keyDate']
+        if u'encoding' in attributes:
+            date.encoding = attributes[u'encoding']
+        if u'point' in attributes:
+            date.point = attributes[u'point']
+        if u'keyDate' in attributes:
+            date.key_date = attributes[u'keyDate']
         return date
 
 
@@ -552,6 +556,7 @@ class LocationParser(object):
 
     def __init__(self, data):
         self._data = data #raw data we receive
+        self._section_separator = u'#'
         self._base_element = None #in the example, this will be set to {'element': 'mods:name', 'attributes': {'type': 'personal'}}
         self._sections = [] #list of the sections, which are divided by '#' (in the example, there are 3 sections)
             #each section consists of a list of elements
@@ -596,7 +601,7 @@ class LocationParser(object):
         if not data:
             return #we're done - there was just one base element
         #now pull out elements/attributes in order, for each section
-        location_sections = data.split(u'#')
+        location_sections = data.split(self._section_separator)
         for section in location_sections:
             new_section = []
             while len(section) > 0:
