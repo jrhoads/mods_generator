@@ -18,46 +18,35 @@ class TestLocationParser(unittest.TestCase):
         loc = '<mods:identifier type="local" displayLabel="PN_DB_id">'
         locParser = LocationParser(loc)
         self.assertEqual(len(locParser.get_elements()), 1)
-        self.assertEqual(len(locParser.get_tags()), 1)
         self.assertEqual(locParser.get_elements()[0]['element'], 'mods:identifier')
-        self.assertEqual(locParser.get_tags()[0], loc)
 
     def test_multi_tag(self):
         loc = '<mods:titleInfo><mods:title>'
         locParser = LocationParser(loc)
         self.assertEqual(len(locParser.get_elements()), 2)
-        self.assertEqual(len(locParser.get_tags()), 2)
         self.assertEqual(locParser.get_elements()[0]['element'], 'mods:titleInfo')
         self.assertEqual(locParser.get_elements()[1]['element'], 'mods:title')
-        self.assertEqual(locParser.get_tags()[0], '<mods:titleInfo>')
-        self.assertEqual(locParser.get_tags()[1], '<mods:title>')
 
     def test_name_tag(self):
         loc = u'<mods:name type="personal"><mods:namePart>#<mods:role><mods:roleTerm type="text">winner'
         locParser = LocationParser(loc)
         self.assertEqual(len(locParser.get_elements()), 4)
-        self.assertEqual(len(locParser.get_tags()), 4)
         self.assertEqual(locParser.get_elements()[0]['element'], u'mods:name')
         self.assertEqual(locParser.get_elements()[1]['element'], u'mods:namePart')
         self.assertEqual(locParser.get_elements()[2]['element'], u'mods:role')
         self.assertEqual(locParser.get_elements()[3]['element'], u'mods:roleTerm')
         self.assertEqual(locParser.get_elements()[3]['attributes'], {'type': 'text'})
         self.assertEqual(locParser.get_elements()[3]['data'], u'winner')
-        self.assertEqual(locParser.get_tags()[0], u'<mods:name type="personal">')
-        self.assertEqual(locParser.get_tags()[1], u'<mods:namePart>')
 
     def test_another_tag(self):
         loc = '<mods:subject><mods:hierarchicalGeographic><mods:country>United States</mods:country><mods:state>'
         locParser = LocationParser(loc)
         self.assertEqual(len(locParser.get_elements()), 4)
-        self.assertEqual(len(locParser.get_tags()), 4)
         self.assertEqual(locParser.get_elements()[0]['element'], 'mods:subject')
         self.assertEqual(locParser.get_elements()[1]['element'], 'mods:hierarchicalGeographic')
         self.assertEqual(locParser.get_elements()[2]['element'], 'mods:country')
         self.assertEqual(locParser.get_elements()[2]['data'], 'United States')
         self.assertEqual(locParser.get_elements()[3]['element'], 'mods:state')
-        self.assertEqual(locParser.get_tags()[0], '<mods:subject>')
-        self.assertEqual(locParser.get_tags()[1], '<mods:hierarchicalGeographic>')
 
     def test_invalid_loc(self):
         loc = 'asdf1234'
@@ -232,6 +221,14 @@ class TestMapper(unittest.TestCase):
       <mods:roleTerm type="text">winner</mods:roleTerm>
     </mods:role>
   </mods:name>
+  <mods:name type="personal">
+    <mods:namePart>Fob, Bob</mods:namePart>
+  </mods:name>
+  <mods:name type="personal">
+    <mods:namePart>Smith, Ted</mods:namePart>
+    <mods:namePart type="date">1900-2013</mods:namePart>
+    <mods:namePart type="termsOfAddress">Sir</mods:namePart>
+  </mods:name>
   <mods:note displayLabel="note label">Note 1&amp;2</mods:note>
   <mods:note>3&lt;4</mods:note>
   <mods:note>another note</mods:note>
@@ -270,6 +267,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:name type="personal"><mods:namePart>', u'Smith#creator || Jones, T.')
         m.add_data(u'<mods:namePart type="date">', u'1799-1889')
         m.add_data(u'<mods:name type="personal"><mods:namePart>#<mods:role><mods:roleTerm type="text">winner', u'Bob')
+        m.add_data(u'<mods:name type="personal"><mods:namePart>#<mods:namePart type="date">#<mods:namePart type="termsOfAddress">', u'Fob, Bob || Smith, Ted#1900-2013#Sir')
         m.add_data(u'<mods:originInfo><mods:dateCreated encoding="w3cdtf" point="end">', u'7/13/1899')
         m.add_data(u'<mods:originInfo><mods:dateCreated encoding="w3cdtf">#<mods:dateCreated encoding="w3cdtf" point="start" keyDate="yes">#<mods:dateCreated encoding="w3cdtf" point="end">', u'1972-10-1973-07-07#1972-10#1973-07-07')
         m.add_data(u'<mods:note displayLabel="note label">', u'Note 1&2')

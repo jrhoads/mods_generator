@@ -343,9 +343,8 @@ class Mapper(object):
 
     def add_data(self, mods_loc, data):
         '''Method to actually put the data in the correct place of MODS obj.'''
-        #parse location info into tags
+        #parse location info into elements/attributes
         loc = LocationParser(mods_loc)
-        tags = loc.get_tags()
         elements = loc.get_elements() #list of element names
         data_vals = [data.strip() for data in data.split(self.dataSeparator)]
         #handle various MODS elements
@@ -353,7 +352,7 @@ class Mapper(object):
             if not self._cleared_fields.get(u'names', None):
                 self._mods.names = []
                 self._cleared_fields[u'names'] = True
-            self._add_name_data(tags, elements, data_vals)
+            self._add_name_data(elements, data_vals)
             return
         elif elements[0]['element'] == u'mods:namePart':
             #grab the last name that was added
@@ -366,7 +365,7 @@ class Mapper(object):
             if not self._cleared_fields.get(u'title_info_list', None):
                 self._mods.title_info_list = []
                 self._cleared_fields[u'title_info_list'] = True
-            self._add_title_data(tags, elements, data_vals)
+            self._add_title_data(elements, data_vals)
             return
         elif elements[0][u'element'] == u'mods:language':
             if not self._cleared_fields.get(u'languages', None):
@@ -395,7 +394,7 @@ class Mapper(object):
                 self._mods.origin_info = None
                 self._cleared_fields[u'origin_info'] = True
                 self._mods.create_origin_info()
-            self._add_origin_info_data(tags, elements, data_vals)
+            self._add_origin_info_data(elements, data_vals)
             return
         elif elements[0]['element'] == 'mods:physicalDescription':
             if not self._cleared_fields.get(u'physical_description', None):
@@ -469,7 +468,7 @@ class Mapper(object):
                     loc = mods.Location(physical=data)
                     self._mods.locations.append(loc)
 
-    def _add_title_data(self, tags, elements, data_vals):
+    def _add_title_data(self, elements, data_vals):
         for data in data_vals:
             title = mods.TitleInfo()
             divs = data.split(u'#')
@@ -484,20 +483,21 @@ class Mapper(object):
                         title.part_number = divs[2]
             self._mods.title_info_list.append(title)
 
-    def _add_name_data(self, tags, elements, data_vals):
+    def _add_name_data(self, elements, data_vals):
         '''Method to handle more complicated name data. '''
         for data in data_vals:
             #elements[0] is mods:name
             name = mods.Name()
             if 'type' in elements[0]['attributes']:
                 name.type = elements[0]['attributes']['type']
-            #we might have a name and then a role, so split the data val
-            # eg. John Smith#creator
+            #we might have a name and then something else, so split the data val
+            # eg. John Smith#creator or John Smith#1900-2000
             divs = data.split(u'#')
             role = None
             role_attrs = {}
             for element in elements[1:]:
-                if element['element'] == 'mods:namePart':
+                #handle base name
+                if element['element'] == 'mods:namePart' and 'type' not in element['attributes']:
                     np = mods.NamePart(text=divs[0])
                     name.name_parts.append(np)
                 elif element['element'] == 'mods:role':
@@ -518,7 +518,7 @@ class Mapper(object):
                 name.roles.append(role)
             self._mods.names.append(name)
 
-    def _add_origin_info_data(self, tags, elements, data_vals):
+    def _add_origin_info_data(self, elements, data_vals):
         if 'displayLabel' in elements[0]['attributes']:
             self._mods.origin_info.label = elements[0]['attributes']['displayLabel']
         for data in data_vals:
@@ -547,15 +547,14 @@ class Mapper(object):
 
 
 class LocationParser(object):
-    '''Small class for parsing dataset location instructions.'''
+    '''class for parsing dataset location instructions.
+    eg. <mods:name type="personal"><mods:namePart>#<mods:namePart type="date">#<mods:namePart type="termsOfAddress">'''
+
     def __init__(self, data):
-        self.data = data
-        self.tags = [] #list of full tags
+        self.data = data #raw data we receive
+        self.base_element = None
         self.elements = [] #list of element dicts
         self._parse()
-
-    def get_tags(self):
-        return self.tags
 
     def get_elements(self):
         return self.elements
@@ -567,7 +566,7 @@ class LocationParser(object):
         '''Get the first Mods field we're looking at in this string.'''
         #first strip off leading & trailing whitespace
         data = self.data.strip()
-        #now pull out tags in order
+        #now pull out elements/attributes in order
         while len(data) > 0:
             #grab the first tag (including namespace)
             startTagPos = data.find(u'<')
@@ -578,7 +577,6 @@ class LocationParser(object):
                 data = data[endTagPos+1:]
                 if tag[:2] == u'</':
                     continue
-                self.tags.append(tag)
             else:
                 raise Exception('Error parsing "%s"!' % data)
             #get element name and attributes to put in list
