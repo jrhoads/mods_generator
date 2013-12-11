@@ -466,6 +466,20 @@ class Mapper(object):
                 for data in data_vals:
                     loc = mods.Location(physical=data)
                     self._mods.locations.append(loc)
+        elif base_element['element'] == u'mods:relatedItem':
+            if not self._cleared_fields.get(u'related', None):
+                self._mods.related_items = []
+                self._cleared_fields[u'related'] = True
+            for data in [data for data in data_vals if data]:
+                related_item = mods.RelatedItem()
+                if u'type' in base_element[u'attributes']:
+                    related_item.type = base_element[u'attributes'][u'type']
+                if u'displayLabel' in base_element[u'attributes']:
+                    related_item.label = base_element[u'attributes'][u'displayLabel']
+                if location_sections[0][0][u'element'] == u'mods:titleInfo':
+                    if location_sections[0][1][u'element'] == u'mods:title':
+                        related_item.title = data
+                self._mods.related_items.append(related_item)
 
     def _add_title_data(self, location_sections, data_vals):
         for data in [data for data in data_vals if data]: #skip any empty data sections
