@@ -269,6 +269,10 @@ class TestMapper(unittest.TestCase):
   <mods:language>
     <mods:languageTerm authority="iso639-2b" type="code">eng</mods:languageTerm>
   </mods:language>
+  <mods:physicalDescription>
+    <mods:extent>1 video file</mods:extent>
+    <mods:digitalOrigin>reformatted digital</mods:digitalOrigin>
+  </mods:physicalDescription>
   <mods:relatedItem type="related item" displayLabel="display">
     <mods:titleInfo>
       <mods:title>Some related item display title</mods:title>
@@ -311,6 +315,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:note>', u'another note')
         m.add_data(u'<mods:typeOfResource>', u'video')
         m.add_data(u'<mods:language><mods:languageTerm authority="iso639-2b" type="code">', u'eng')
+        m.add_data(u'<mods:physicalDescription><mods:extent>#<mods:digitalOrigin>', u'1 video file#reformatted digital')
         m.add_data(u'<mods:relatedItem type="related item" displayLabel="display"><mods:titleInfo><mods:title>', u'Some related item display title')
         mods = m.get_mods()
         mods_data = unicode(mods.serializeDocument(pretty=True), 'utf-8')

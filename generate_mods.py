@@ -139,6 +139,20 @@ class DataHandler(object):
         #return None if we didn't find anything
         return None
 
+    def get_filename_col(self):
+        '''Get index of column that contains filename (this may be the same as id col).'''
+        ID_NAMES = [u'filename', u'file names']
+        #try control row first
+        for i, val in enumerate(self.get_control_row()):
+            if val.lower() in ID_NAMES:
+                return i
+        #try first row if needed
+        for i, val in enumerate(self.get_row(1)):
+            if val.lower() in ID_NAMES:
+                return i
+        #return None if we didn't find anything
+        return None
+
     def get_cols_to_map(self):
         '''Get a dict of columns & values in dataset that should be mapped to MODS
         (some will just be ignored).
@@ -240,7 +254,6 @@ def process_text_date(strDate, forceDates=False):
         return strDate
     if len(strDate) == 0:
         return strDate
-    logger.debug('process_text_date: ' + strDate)
     #Some date formats we could understand:
     #dd/dd/dddd, dd/dd/dd, d/d/dd, ...
     mmddyy = re.compile('^\d?\d/\d?\d/\d\d$')
@@ -296,7 +309,7 @@ def process_text_date(strDate, forceDates=False):
                 logger.warning('Error creating date from ' + strDate)
                 return strDate
     else:
-        logger.warning('Could not parse date string: ' + strDate)
+        #logger.warning('Could not parse date string: ' + strDate)
         return strDate
     #at this point, we have newDate, but it could still have been ambiguous
     #day & month are both between 1 and 12 & not equal - ambiguous
@@ -400,8 +413,12 @@ class Mapper(object):
                 self._cleared_fields[u'physical_description'] = True
                 #can only have one physical description currently
                 self._mods.create_physical_description()
-            if location_sections[0][0]['element'] == 'mods:extent':
-                self._mods.physical_description.extent = data_vals[0]
+            data_divs = data.split(u'#')
+            for index, section in enumerate(location_sections):
+                if section[0][u'element'] == 'mods:extent':
+                    self._mods.physical_description.extent = data_divs[index]
+                elif section[0][u'element'] == 'mods:digitalOrigin':
+                    self._mods.physical_description.digital_origin = data_divs[index]
         elif base_element['element'] == 'mods:typeOfResource':
             if not self._cleared_fields.get(u'typeOfResource', None):
                 self._mods.resource_type = None
@@ -684,9 +701,12 @@ def process(dataHandler):
     if id_col is None:
         logger.error('Could not get id column!')
         sys.exit(1)
+    filename_col = dataHandler.get_filename_col()
+    if not filename_col:
+        filename_col = id_col
     index = 1
     for row in dataHandler.get_data_rows():
-        filename = row[id_col].strip()
+        filename = row[filename_col].strip()
         if len(filename) == 0:
             logger.warning('No filename defined for row %d. Skipping.' % (index))
             continue
