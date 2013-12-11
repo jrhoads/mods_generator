@@ -551,35 +551,28 @@ class LocationParser(object):
     eg. <mods:name type="personal"><mods:namePart>#<mods:namePart type="date">#<mods:namePart type="termsOfAddress">'''
 
     def __init__(self, data):
-        self.data = data #raw data we receive
-        self.base_element = None
-        self.elements = [] #list of element dicts
+        self._data = data #raw data we receive
+        self._base_element = None #in the example, this will be set to {'element': 'mods:name', 'attributes': {'type': 'personal'}}
+        self._sections = [] #list of the sections, which are divided by '#' (in the example, there are 3 sections)
+            #each section consists of a list of elements
+            #each element is a dict containing the element name, its attributes, and any data in that element
         self._parse()
 
-    def get_elements(self):
-        return self.elements
+    def get_base_element(self):
+        return self._base_element
 
-    def get_attributes(self):
-        return self.attributes
+    def get_sections(self):
+        return self._sections
 
-    def _parse(self):
-        '''Get the first Mods field we're looking at in this string.'''
-        #first strip off leading & trailing whitespace
-        data = self.data.strip()
-        #now pull out elements/attributes in order
-        while len(data) > 0:
-            #grab the first tag (including namespace)
-            startTagPos = data.find(u'<')
-            endTagPos = data.find(u'>')
-            if endTagPos > startTagPos:
-                tag = data[startTagPos:endTagPos+1]
-                #remove first tag from data for the next loop
-                data = data[endTagPos+1:]
-                if tag[:2] == u'</':
-                    continue
-            else:
-                raise Exception('Error parsing "%s"!' % data)
-            #get element name and attributes to put in list
+    def _parse_base_element(self, data):
+        #grab the first tag (including namespace) & parse into self._base_element
+        startTagPos = data.find(u'<')
+        endTagPos = data.find(u'>')
+        if endTagPos > startTagPos:
+            tag = data[startTagPos:endTagPos+1]
+            #remove first tag from data for the rest of the parsing
+            data = data[endTagPos+1:]
+            #parse tag into elements & attributes
             space = tag.find(u' ')
             if space > 0:
                 name = tag[1:space]
@@ -587,23 +580,64 @@ class LocationParser(object):
             else:
                 name = tag[1:-1]
                 attributes = {}
-            #there could be some text before the next tag
-            text = None
-            if data:
-                next_tag_start = data.find(u'<')
-                if next_tag_start == 0:
-                    pass
-                elif next_tag_start == -1:
-                    text = data
-                    data = ''
+            return ({u'element': name, u'attributes': attributes, u'data': None}, data)
+        else:
+            raise Exception('Error parsing "%s"!' % data.encode('utf-8'))
+
+    def _parse(self):
+        '''Get the first Mods field we're looking at in this string.'''
+        #first strip off leading & trailing whitespace
+        data = self._data.strip()
+        #very basic data checking
+        if data[0] != u'<':
+            raise Exception('location data must start with "<"')
+        #grab base element (eg. mods:originInfo, mods:name, ...)
+        self._base_element, data = self._parse_base_element(data)
+        if not data:
+            return #we're done - there was just one base element
+        #now pull out elements/attributes in order, for each section
+        location_sections = data.split(u'#')
+        for section in location_sections:
+            new_section = []
+            while len(section) > 0:
+                #grab the first tag (including namespace)
+                startTagPos = section.find(u'<')
+                endTagPos = section.find(u'>')
+                if endTagPos > startTagPos:
+                    tag = section[startTagPos:endTagPos+1]
+                    #remove first tag from section for the next loop
+                    section = section[endTagPos+1:]
+                    if tag[:2] == u'</':
+                        continue
                 else:
-                    text = data[:next_tag_start]
-                    data = data[next_tag_start:]
-            if text:
-                self.elements.append({'element': name, 'attributes': attributes, 'data': text})
-            else:
-                self.elements.append({'element': name, 'attributes': attributes})
-                    
+                    raise Exception('Error parsing "%s"!' % section)
+                #get element name and attributes to put in list
+                space = tag.find(u' ')
+                if space > 0:
+                    name = tag[1:space]
+                    attributes = self._parse_attributes(tag[space:-1])
+                else:
+                    name = tag[1:-1]
+                    attributes = {}
+                #there could be some text before the next tag
+                text = None
+                if section:
+                    next_tag_start = section.find(u'<')
+                    if next_tag_start == 0:
+                        pass
+                    elif next_tag_start == -1:
+                        text = section
+                        section = ''
+                    else:
+                        text = section[:next_tag_start]
+                        section = section[next_tag_start:]
+                if text:
+                    new_section.append({'element': name, 'attributes': attributes, 'data': text})
+                else:
+                    new_section.append({'element': name, 'attributes': attributes, u'data': None})
+            if new_section:
+                self._sections.append(new_section)
+
 
     def _parse_attributes(self, data):
         data = data.strip()

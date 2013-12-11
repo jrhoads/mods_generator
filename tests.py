@@ -15,38 +15,68 @@ class TestLocationParser(unittest.TestCase):
         pass
 
     def test_single_tag(self):
-        loc = '<mods:identifier type="local" displayLabel="PN_DB_id">'
+        loc = u'<mods:identifier type="local" displayLabel="PN_DB_id">'
         locParser = LocationParser(loc)
-        self.assertEqual(len(locParser.get_elements()), 1)
-        self.assertEqual(locParser.get_elements()[0]['element'], 'mods:identifier')
+        base_element = locParser.get_base_element()
+        self.assertEqual(base_element[u'element'], u'mods:identifier')
+        self.assertEqual(base_element[u'attributes'], {u'type': u'local', u'displayLabel': u'PN_DB_id'})
+        self.assertFalse(base_element[u'data'])
+        sections = locParser.get_sections()
+        self.assertFalse(sections)
 
     def test_multi_tag(self):
-        loc = '<mods:titleInfo><mods:title>'
+        loc = u'<mods:titleInfo><mods:title>'
         locParser = LocationParser(loc)
-        self.assertEqual(len(locParser.get_elements()), 2)
-        self.assertEqual(locParser.get_elements()[0]['element'], 'mods:titleInfo')
-        self.assertEqual(locParser.get_elements()[1]['element'], 'mods:title')
+        base_element = locParser.get_base_element()
+        self.assertEqual(base_element[u'element'], u'mods:titleInfo')
+        self.assertEqual(base_element[u'attributes'], {})
+        self.assertFalse(base_element[u'data'])
+        sections = locParser.get_sections()
+        self.assertEqual(len(sections), 1)
+        first_section = sections[0]
+        self.assertEqual(len(first_section), 1)
+        self.assertEqual(first_section[0][u'element'], u'mods:title')
+        self.assertEqual(first_section[0][u'attributes'], {})
+        self.assertFalse(first_section[0][u'data'])
 
     def test_name_tag(self):
         loc = u'<mods:name type="personal"><mods:namePart>#<mods:role><mods:roleTerm type="text">winner'
         locParser = LocationParser(loc)
-        self.assertEqual(len(locParser.get_elements()), 4)
-        self.assertEqual(locParser.get_elements()[0]['element'], u'mods:name')
-        self.assertEqual(locParser.get_elements()[1]['element'], u'mods:namePart')
-        self.assertEqual(locParser.get_elements()[2]['element'], u'mods:role')
-        self.assertEqual(locParser.get_elements()[3]['element'], u'mods:roleTerm')
-        self.assertEqual(locParser.get_elements()[3]['attributes'], {'type': 'text'})
-        self.assertEqual(locParser.get_elements()[3]['data'], u'winner')
+        base_element = locParser.get_base_element()
+        self.assertEqual(base_element[u'element'], u'mods:name')
+        self.assertEqual(base_element[u'attributes'], {u'type': u'personal'})
+        self.assertFalse(base_element[u'data'])
+        sections = locParser.get_sections()
+        self.assertEqual(len(sections), 2)
+        first_section = sections[0]
+        self.assertEqual(len(first_section), 1)
+        self.assertEqual(first_section[0][u'element'], u'mods:namePart')
+        self.assertEqual(first_section[0][u'attributes'], {})
+        self.assertFalse(first_section[0][u'data'])
+        second_section = sections[1]
+        self.assertEqual(len(second_section), 2)
+        self.assertEqual(second_section[0][u'element'], u'mods:role')
+        self.assertEqual(second_section[0][u'attributes'], {})
+        self.assertFalse(second_section[0][u'data'], {})
+        self.assertEqual(second_section[1][u'element'], u'mods:roleTerm')
+        self.assertEqual(second_section[1][u'attributes'], {u'type': u'text'})
+        self.assertEqual(second_section[1][u'data'], u'winner')
 
     def test_another_tag(self):
         loc = '<mods:subject><mods:hierarchicalGeographic><mods:country>United States</mods:country><mods:state>'
         locParser = LocationParser(loc)
-        self.assertEqual(len(locParser.get_elements()), 4)
-        self.assertEqual(locParser.get_elements()[0]['element'], 'mods:subject')
-        self.assertEqual(locParser.get_elements()[1]['element'], 'mods:hierarchicalGeographic')
-        self.assertEqual(locParser.get_elements()[2]['element'], 'mods:country')
-        self.assertEqual(locParser.get_elements()[2]['data'], 'United States')
-        self.assertEqual(locParser.get_elements()[3]['element'], 'mods:state')
+        base_element = locParser.get_base_element()
+        self.assertEqual(base_element[u'element'], u'mods:subject')
+        self.assertEqual(base_element[u'attributes'], {})
+        self.assertFalse(base_element[u'data'])
+        sections = locParser.get_sections()
+        self.assertEqual(len(sections), 1)
+        first_section = sections[0]
+        self.assertEqual(len(first_section), 3)
+        self.assertEqual(first_section[0]['element'], 'mods:hierarchicalGeographic')
+        self.assertEqual(first_section[1]['element'], 'mods:country')
+        self.assertEqual(first_section[1]['data'], 'United States')
+        self.assertEqual(first_section[2]['element'], 'mods:state')
 
     def test_invalid_loc(self):
         loc = 'asdf1234'
