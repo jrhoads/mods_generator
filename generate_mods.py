@@ -448,6 +448,8 @@ class Mapper(object):
                 self._cleared_fields[u'subjects'] = True
             for data in data_vals:
                 subject = mods.Subject()
+                if 'authority' in base_element['attributes']:
+                    subject.authority = base_element['attributes']['authority']
                 section = location_sections[0]
                 if section[0]['element'] == 'mods:topic':
                     subject.topic = data
