@@ -481,10 +481,21 @@ class Mapper(object):
             if not self._cleared_fields.get(u'locations', None):
                 self._mods.locations = []
                 self._cleared_fields[u'locations'] = True
-            if location_sections[0][0]['element'] == u'mods:physicalLocation':
-                for data in data_vals:
-                    loc = mods.Location(physical=data)
-                    self._mods.locations.append(loc)
+            for data in data_vals:
+                loc = mods.Location()
+                for section, div in zip(location_sections, data.split(u'#')):
+                    if section[0]['element'] == u'mods:physicalLocation':
+                        loc.physical = div
+                    elif section[0]['element'] == u'mods:holdingSimple':
+                        hs = mods.HoldingSimple()
+                        if section[1]['element'] == u'mods:copyInformation':
+                            if section[2]['element'] == u'mods:note':
+                                note = mods.Note(text=div)
+                                ci = mods.CopyInformation()
+                                ci.notes.append(note)
+                                hs.copy_information.append(ci)
+                                loc.holding_simple = hs
+                self._mods.locations.append(loc)
         elif base_element['element'] == u'mods:relatedItem':
             if not self._cleared_fields.get(u'related', None):
                 self._mods.related_items = []
