@@ -485,7 +485,10 @@ class Mapper(object):
                 loc = mods.Location()
                 for section, div in zip(location_sections, data.split(u'#')):
                     if section[0]['element'] == u'mods:physicalLocation':
-                        loc.physical = div
+                        if section[0]['data']:
+                            loc.physical = section[0]['data']
+                        else:
+                            loc.physical = div
                     elif section[0]['element'] == u'mods:holdingSimple':
                         hs = mods.HoldingSimple()
                         if section[1]['element'] == u'mods:copyInformation':
