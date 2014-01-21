@@ -216,6 +216,11 @@ class TestMapper(unittest.TestCase):
     <mods:dateCreated encoding="w3cdtf">1972-10-1973-07-07</mods:dateCreated>
     <mods:dateCreated encoding="w3cdtf" point="start" keyDate="yes">1972-10</mods:dateCreated>
     <mods:dateCreated encoding="w3cdtf" point="end">1973-07-07</mods:dateCreated>
+    <mods:dateIssued encoding="w3cdtf">1974-01-01</mods:dateIssued>
+    <mods:dateCaptured encoding="w3cdtf">1975-01-01</mods:dateCaptured>
+    <mods:dateValid encoding="w3cdtf">1976-01-01</mods:dateValid>
+    <mods:dateModified encoding="w3cdtf">1977-01-01</mods:dateModified>
+    <mods:copyrightDate encoding="w3cdtf">1978-01-01</mods:copyrightDate>
   </mods:originInfo>
   <mods:subject>
     <mods:topic>PROGRĄMMING</mods:topic>
@@ -317,6 +322,11 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:language><mods:languageTerm authority="iso639-2b" type="code">', u'eng')
         m.add_data(u'<mods:physicalDescription><mods:extent>#<mods:digitalOrigin>', u'1 video file#reformatted digital')
         m.add_data(u'<mods:relatedItem type="related item" displayLabel="display"><mods:titleInfo><mods:title>', u'Some related item display title')
+        m.add_data(u'<mods:originInfo><mods:dateIssued encoding="w3cdtf">', u'1974-01-01')
+        m.add_data(u'<mods:originInfo><mods:dateCaptured encoding="w3cdtf">', u'1975-01-01')
+        m.add_data(u'<mods:originInfo><mods:dateValid encoding="w3cdtf">', u'1976-01-01')
+        m.add_data(u'<mods:originInfo><mods:dateModified encoding="w3cdtf">', u'1977-01-01')
+        m.add_data(u'<mods:originInfo><mods:copyrightDate encoding="w3cdtf">', u'1978-01-01')
         mods = m.get_mods()
         mods_data = unicode(mods.serializeDocument(pretty=True), 'utf-8')
         self.assertTrue(isinstance(mods, Mods))

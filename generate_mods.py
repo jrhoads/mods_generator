@@ -127,7 +127,7 @@ class DataHandler(object):
 
     def get_id_col(self):
         '''Get index of column that contains id (or filename).'''
-        ID_NAMES = [u'record name', u'filename', u'id', u'file names']
+        ID_NAMES = [u'record name', u'filename', u'id', u'file names', u'file id']
         #try control row first
         for i, val in enumerate(self.get_control_row()):
             if val.lower() in ID_NAMES:
@@ -161,7 +161,7 @@ class DataHandler(object):
         ctrl_row = self.get_control_row()
         for i, val in enumerate(ctrl_row):
             #we'll assume it's to be mapped if we see the start of a MODS tag
-            if u'<mods' in val:
+            if val.startswith(u'<mods'):
                 cols[i] = val
         return cols
 
@@ -563,6 +563,26 @@ class Mapper(object):
                     date = mods.DateCreated(date=divs[index])
                     date = self._set_date_attributes(date, section[0][u'attributes'])
                     self._mods.origin_info.created.append(date)
+                elif section[0][u'element'] == u'mods:dateIssued':
+                    date = mods.DateIssued(date=divs[index])
+                    date = self._set_date_attributes(date, section[0][u'attributes'])
+                    self._mods.origin_info.issued.append(date)
+                elif section[0][u'element'] == u'mods:dateCaptured':
+                    date = mods.DateCaptured(date=divs[index])
+                    date = self._set_date_attributes(date, section[0][u'attributes'])
+                    self._mods.origin_info.captured.append(date)
+                elif section[0][u'element'] == u'mods:dateValid':
+                    date = mods.DateValid(date=divs[index])
+                    date = self._set_date_attributes(date, section[0][u'attributes'])
+                    self._mods.origin_info.valid.append(date)
+                elif section[0][u'element'] == u'mods:dateModified':
+                    date = mods.DateModified(date=divs[index])
+                    date = self._set_date_attributes(date, section[0][u'attributes'])
+                    self._mods.origin_info.modified.append(date)
+                elif section[0][u'element'] == u'mods:copyrightDate':
+                    date = mods.CopyrightDate(date=divs[index])
+                    date = self._set_date_attributes(date, section[0][u'attributes'])
+                    self._mods.origin_info.copyright.append(date)
                 elif section[0][u'element'] == u'mods:dateOther':
                     date = mods.DateOther(date=divs[index])
                     date = self._set_date_attributes(date, section[0][u'attributes'])
