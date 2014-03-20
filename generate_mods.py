@@ -361,6 +361,8 @@ class Mapper(object):
         base_element = loc.get_base_element()
         location_sections = loc.get_sections()
         data_vals = [data.strip() for data in data.split(self.dataSeparator)]
+        #strip any empty data sections so we don't have to worry about it below
+        data_vals = [data for data in data_vals if data]
         #handle various MODS elements
         if base_element['element'] == u'mods:name':
             if not self._cleared_fields.get(u'names', None):
@@ -503,7 +505,7 @@ class Mapper(object):
             if not self._cleared_fields.get(u'related', None):
                 self._mods.related_items = []
                 self._cleared_fields[u'related'] = True
-            for data in [data for data in data_vals if data]:
+            for data in data_vals:
                 related_item = mods.RelatedItem()
                 if u'type' in base_element[u'attributes']:
                     related_item.type = base_element[u'attributes'][u'type']
@@ -513,9 +515,12 @@ class Mapper(object):
                     if location_sections[0][1][u'element'] == u'mods:title':
                         related_item.title = data
                 self._mods.related_items.append(related_item)
+        else:
+            logger.error('element not handled! %s' % base_element)
+            raise Exception('element not handled!')
 
     def _add_title_data(self, location_sections, data_vals):
-        for data in [data for data in data_vals if data]: #skip any empty data sections
+        for data in data_vals:
             title = mods.TitleInfo()
             for section, div in zip(location_sections, data.split(u'#')):
                 for element in section:
@@ -529,7 +534,7 @@ class Mapper(object):
 
     def _add_name_data(self, base_element, location_sections, data_vals):
         '''Method to handle more complicated name data. '''
-        for data in [data for data in data_vals if data]: #skip any empty data sections
+        for data in data_vals:
             name = mods.Name() #we're always going to be creating a name
             if u'type' in base_element[u'attributes']:
                 name.type = base_element[u'attributes'][u'type']
