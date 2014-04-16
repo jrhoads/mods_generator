@@ -613,6 +613,8 @@ class Mapper(object):
                     placeTerm = mods.PlaceTerm(text=divs[index])
                     place.place_terms.append(placeTerm)
                     self._mods.origin_info.places.append(place)
+                elif section[0][u'element'] == u'mods:publisher':
+                    self._mods.origin_info.publisher = divs[index]
                 else:
                     print(u'unhandled originInfo element: %s' % section)
                     raise Exception('unhandled originInfo element: %s' % section)

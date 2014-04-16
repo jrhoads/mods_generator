@@ -211,6 +211,7 @@ class TestMapper(unittest.TestCase):
   <mods:identifier type="local" displayLabel="PN_DB_id">321</mods:identifier>
   <mods:genre authority="aat">Programming Tests</mods:genre>
   <mods:originInfo displayLabel="Date Ądded to Colléction">
+    <mods:publisher>Publisher</mods:publisher>
     <mods:place>
       <mods:placeTerm>USA</mods:placeTerm>
     </mods:place>
@@ -311,6 +312,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:identifier type="local" displayLabel="Original no.">', u'1591')
         m.add_data(u'<mods:identifier type="local" displayLabel="PN_DB_id">', u'321')
         m.add_data(u'<mods:genre authority="aat">', u'Programming Tests')
+        m.add_data(u'<mods:originInfo><mods:publisher>', u'Publisher')
         m.add_data(u'<mods:originInfo><mods:place><mods:placeTerm>', u'USA')
         m.add_data(u'<mods:originInfo displayLabel="Date Ądded to Colléction"><mods:dateOther encoding="w3cdtf" keyDate="yes">', u'2010-01-31')
         m.add_data(u'<mods:subject><mods:topic>', u'PROGRĄMMING || Testing')
