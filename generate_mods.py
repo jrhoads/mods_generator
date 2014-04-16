@@ -608,9 +608,14 @@ class Mapper(object):
                     date = mods.DateOther(date=divs[index])
                     date = self._set_date_attributes(date, section[0][u'attributes'])
                     self._mods.origin_info.other.append(date)
+                elif section[0][u'element'] == u'mods:place':
+                    place = mods.Place()
+                    placeTerm = mods.PlaceTerm(text=divs[index])
+                    place.place_terms.append(placeTerm)
+                    self._mods.origin_info.places.append(place)
                 else:
                     print(u'unhandled originInfo element: %s' % section)
-                    return
+                    raise Exception('unhandled originInfo element: %s' % section)
 
     def _set_date_attributes(self, date, attributes):
         if u'encoding' in attributes:
