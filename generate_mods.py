@@ -362,7 +362,7 @@ class Mapper(object):
         location_sections = loc.get_sections()
         data_vals = [data.strip() for data in data.split(self.dataSeparator)]
         #strip any empty data sections so we don't have to worry about it below
-        data_vals = [data for data in data_vals if data]
+        data_vals = [self._get_data_divs(data, loc.has_sectioned_data) for data in data_vals if data]
         #handle various MODS elements
         if base_element['element'] == u'mods:name':
             if not self._cleared_fields.get(u'names', None):
@@ -372,7 +372,7 @@ class Mapper(object):
         elif base_element['element'] == u'mods:namePart':
             #grab the last name that was added
             name = self._mods.names[-1]
-            np = mods.NamePart(text=data)
+            np = mods.NamePart(text=data_vals[0][0])
             if u'type' in base_element[u'attributes']:
                 np.type = base_element[u'attributes'][u'type']
             name.name_parts.append(np)
@@ -387,7 +387,7 @@ class Mapper(object):
                 self._cleared_fields[u'languages'] = True
             for data in data_vals:
                 language = mods.Language()
-                language_term = mods.LanguageTerm(text=data)
+                language_term = mods.LanguageTerm(text=data[0])
                 if u'authority' in location_sections[0][0]['attributes']:
                     language_term.authority = location_sections[0][0]['attributes']['authority']
                 if u'type' in location_sections[0][0]['attributes']:
@@ -399,7 +399,7 @@ class Mapper(object):
                 self._mods.genres = []
                 self._cleared_fields[u'genres'] = True
             for data in data_vals:
-                genre = mods.Genre(text=data)
+                genre = mods.Genre(text=data[0])
                 if 'authority' in base_element['attributes']:
                     genre.authority = base_element['attributes']['authority']
                 self._mods.genres.append(genre)
@@ -415,7 +415,7 @@ class Mapper(object):
                 self._cleared_fields[u'physical_description'] = True
                 #can only have one physical description currently
                 self._mods.create_physical_description()
-            data_divs = self._get_data_divs(data)
+            data_divs = data_vals[0]
             for index, section in enumerate(location_sections):
                 if section[0][u'element'] == 'mods:extent':
                     self._mods.physical_description.extent = data_divs[index]
@@ -425,20 +425,20 @@ class Mapper(object):
             if not self._cleared_fields.get(u'typeOfResource', None):
                 self._mods.resource_type = None
                 self._cleared_fields[u'typeOfResource'] = True
-            self._mods.resource_type = data_vals[0]
+            self._mods.resource_type = data_vals[0][0]
         elif base_element['element'] == 'mods:abstract':
             if not self._cleared_fields.get(u'abstract', None):
                 self._mods.abstract = None
                 self._cleared_fields[u'abstract'] = True
                 #can only have one abstract currently
                 self._mods.create_abstract()
-            self._mods.abstract.text = data_vals[0]
+            self._mods.abstract.text = data_vals[0][0]
         elif base_element['element'] == 'mods:note':
             if not self._cleared_fields.get(u'notes', None):
                 self._mods.notes = []
                 self._cleared_fields[u'notes'] = True
             for data in data_vals:
-                note = mods.Note(text=data)
+                note = mods.Note(text=data[0])
                 if 'type' in base_element['attributes']:
                     note.type = base_element['attributes']['type']
                 if 'displayLabel' in base_element['attributes']:
@@ -454,18 +454,18 @@ class Mapper(object):
                     subject.authority = base_element['attributes']['authority']
                 section = location_sections[0]
                 if section[0]['element'] == 'mods:topic':
-                    subject.topic = data
+                    subject.topic = data[0]
                 elif section[0]['element'] == 'mods:geographic':
-                    subject.geographic = data
+                    subject.geographic = data[0]
                 elif section[0]['element'] == 'mods:hierarchicalGeographic':
                     hg = mods.HierarchicalGeographic()
                     if section[1]['element'] == 'mods:country':
                         if 'data' in section[1]:
                             hg.country = section[1]['data']
                             if section[2]['element'] == 'mods:state':
-                                hg.state = data
+                                hg.state = data[0]
                         else:
-                            hg.country = data
+                            hg.country = data[0]
                     subject.hierarchical_geographic = hg
                 self._mods.subjects.append(subject)
         elif base_element['element'] == 'mods:identifier':
@@ -473,7 +473,7 @@ class Mapper(object):
                 self._mods.identifiers = []
                 self._cleared_fields[u'identifiers'] = True
             for data in data_vals:
-                identifier = mods.Identifier(text=data)
+                identifier = mods.Identifier(text=data[0])
                 if 'type' in base_element['attributes']:
                     identifier.type = base_element['attributes']['type']
                 if 'displayLabel' in base_element['attributes']:
@@ -485,7 +485,7 @@ class Mapper(object):
                 self._cleared_fields[u'locations'] = True
             for data in data_vals:
                 loc = mods.Location()
-                data_divs = self._get_data_divs(data)
+                data_divs = data
                 for section, div in zip(location_sections, data_divs):
                     if section[0]['element'] == u'mods:physicalLocation':
                         if section[0]['data']:
@@ -514,7 +514,7 @@ class Mapper(object):
                     related_item.label = base_element[u'attributes'][u'displayLabel']
                 if location_sections[0][0][u'element'] == u'mods:titleInfo':
                     if location_sections[0][1][u'element'] == u'mods:title':
-                        related_item.title = data
+                        related_item.title = data[0]
                 self._mods.related_items.append(related_item)
         else:
             logger.error('element not handled! %s' % base_element)
@@ -523,7 +523,7 @@ class Mapper(object):
     def _add_title_data(self, location_sections, data_vals):
         for data in data_vals:
             title = mods.TitleInfo()
-            data_divs = self._get_data_divs(data)
+            data_divs = data
             for section, div in zip(location_sections, data_divs):
                 for element in section:
                     if element[u'element'] == u'mods:title':
@@ -534,8 +534,10 @@ class Mapper(object):
                         title.part_number = div
             self._mods.title_info_list.append(title)
 
-    def _get_data_divs(self, data):
+    def _get_data_divs(self, data, has_sectioned_data):
         data_divs = []
+        if not has_sectioned_data:
+            return [data]
         #split data into its divisions based on '#', but allow \ to escape the #
         while data:
             ind = data.find(u'#')
@@ -563,7 +565,7 @@ class Mapper(object):
             name = mods.Name() #we're always going to be creating a name
             if u'type' in base_element[u'attributes']:
                 name.type = base_element[u'attributes'][u'type']
-            data_divs = self._get_data_divs(data)
+            data_divs = data
             for index, section in enumerate(location_sections):
                 try:
                     div = data_divs[index].strip()
@@ -601,7 +603,7 @@ class Mapper(object):
         if u'displayLabel' in base_element['attributes']:
             self._mods.origin_info.label = base_element[u'attributes'][u'displayLabel']
         for data in data_vals:
-            divs = self._get_data_divs(data)
+            divs = data
             for index, section in enumerate(location_sections):
                 if not divs[index]:
                     continue
@@ -659,6 +661,7 @@ class LocationParser(object):
     eg. <mods:name type="personal"><mods:namePart>#<mods:namePart type="date">#<mods:namePart type="termsOfAddress">'''
 
     def __init__(self, data):
+        self.has_sectioned_data = False
         self._data = data #raw data we receive
         self._section_separator = u'#'
         self._base_element = None #in the example, this will be set to {'element': 'mods:name', 'attributes': {'type': 'personal'}}
@@ -706,6 +709,8 @@ class LocationParser(object):
             return #we're done - there was just one base element
         #now pull out elements/attributes in order, for each section
         location_sections = data.split(self._section_separator)
+        if len(location_sections) > 1:
+            self.has_sectioned_data = True
         for section in location_sections:
             new_section = []
             while len(section) > 0:

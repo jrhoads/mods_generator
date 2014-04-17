@@ -224,7 +224,7 @@ class TestMapper(unittest.TestCase):
     <mods:dateCaptured encoding="w3cdtf">1975-01-01</mods:dateCaptured>
     <mods:dateValid encoding="w3cdtf">1976-01-01</mods:dateValid>
     <mods:dateModified encoding="w3cdtf">1977-01-01</mods:dateModified>
-    <mods:copyrightDate encoding="w3cdtf">1978-01-01</mods:copyrightDate>
+    <mods:copyrightDate>1978-01-##</mods:copyrightDate>
   </mods:originInfo>
   <mods:subject>
     <mods:topic>PROGRĄMMING</mods:topic>
@@ -337,7 +337,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:originInfo><mods:dateCaptured encoding="w3cdtf">', u'1975-01-01')
         m.add_data(u'<mods:originInfo><mods:dateValid encoding="w3cdtf">', u'1976-01-01')
         m.add_data(u'<mods:originInfo><mods:dateModified encoding="w3cdtf">', u'1977-01-01')
-        m.add_data(u'<mods:originInfo><mods:copyrightDate encoding="w3cdtf">', u'1978-01-01')
+        m.add_data(u'<mods:originInfo><mods:copyrightDate>', u'1978-01-##')
         mods = m.get_mods()
         mods_data = unicode(mods.serializeDocument(pretty=True), 'utf-8')
         self.assertTrue(isinstance(mods, Mods))
@@ -351,9 +351,10 @@ class TestMapper(unittest.TestCase):
 
     def test_get_data_divs(self):
         m = Mapper()
-        self.assertEqual(m._get_data_divs(u'part1#part2#part3'), [u'part1', u'part2', u'part3'])
-        self.assertEqual(m._get_data_divs(u'part\#1#part2#part\#3'), [u'part#1', u'part2', u'part#3'])
-        self.assertEqual(m._get_data_divs(u'part\#1 and \#1a#part2#part\#3'), [u'part#1 and #1a', u'part2', u'part#3'])
+        self.assertEqual(m._get_data_divs(u'part1#part2#part3', False), [u'part1#part2#part3'])
+        self.assertEqual(m._get_data_divs(u'part1#part2#part3', True), [u'part1', u'part2', u'part3'])
+        self.assertEqual(m._get_data_divs(u'part\#1#part2#part\#3', True), [u'part#1', u'part2', u'part#3'])
+        self.assertEqual(m._get_data_divs(u'part\#1 and \#1a#part2#part\#3', True), [u'part#1 and #1a', u'part2', u'part#3'])
 
 
 if __name__ == '__main__':
