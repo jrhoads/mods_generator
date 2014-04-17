@@ -415,7 +415,7 @@ class Mapper(object):
                 self._cleared_fields[u'physical_description'] = True
                 #can only have one physical description currently
                 self._mods.create_physical_description()
-            data_divs = data.split(u'#')
+            data_divs = self._get_data_divs(data)
             for index, section in enumerate(location_sections):
                 if section[0][u'element'] == 'mods:extent':
                     self._mods.physical_description.extent = data_divs[index]
@@ -485,7 +485,8 @@ class Mapper(object):
                 self._cleared_fields[u'locations'] = True
             for data in data_vals:
                 loc = mods.Location()
-                for section, div in zip(location_sections, data.split(u'#')):
+                data_divs = self._get_data_divs(data)
+                for section, div in zip(location_sections, data_divs):
                     if section[0]['element'] == u'mods:physicalLocation':
                         if section[0]['data']:
                             loc.physical = section[0]['data']
@@ -523,7 +524,6 @@ class Mapper(object):
         for data in data_vals:
             title = mods.TitleInfo()
             data_divs = self._get_data_divs(data)
-            #data_divs = data.split(u'#')
             for section, div in zip(location_sections, data_divs):
                 for element in section:
                     if element[u'element'] == u'mods:title':
@@ -543,16 +543,14 @@ class Mapper(object):
                 data_divs.append(data)
                 data = ''
             else:
-                if data[ind-1] == u'\\':
-                    remove_ind = ind-1
-                    ind = data.find(u'#', ind+1)
-                    if ind == -1:
-                        data = data[:remove_ind] + data[remove_ind+1:]
-                        data_divs.append(data)
-                        data = ''
-                    else:
-                        data_divs.append(data[:remove_ind] + data[remove_ind+1:ind])
-                        data = data[ind+1:]
+                while ind != -1 and data[ind-1] == u'\\':
+                    #remove '\'
+                    data = data[:ind-1] + data[ind:]
+                    #find next '#' (being sure to advance past current '#')
+                    ind = data.find(u'#', ind)
+                if ind == -1:
+                    data_divs.append(data)
+                    data = u''
                 else:
                     data_divs.append(data[:ind])
                     data = data[ind+1:]
@@ -565,7 +563,7 @@ class Mapper(object):
             name = mods.Name() #we're always going to be creating a name
             if u'type' in base_element[u'attributes']:
                 name.type = base_element[u'attributes'][u'type']
-            data_divs = data.split(u'#')
+            data_divs = self._get_data_divs(data)
             for index, section in enumerate(location_sections):
                 try:
                     div = data_divs[index].strip()
@@ -603,7 +601,7 @@ class Mapper(object):
         if u'displayLabel' in base_element['attributes']:
             self._mods.origin_info.label = base_element[u'attributes'][u'displayLabel']
         for data in data_vals:
-            divs = data.split(u'#')
+            divs = self._get_data_divs(data)
             for index, section in enumerate(location_sections):
                 if not divs[index]:
                     continue
