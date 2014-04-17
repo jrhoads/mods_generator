@@ -202,10 +202,18 @@ class TestMapper(unittest.TestCase):
 '''
     FULL_MODS = u'''<?xml version='1.0' encoding='UTF-8'?>
 <mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-4.xsd">
+  <mods:physicalDescription>
+    <mods:extent>1 video file</mods:extent>
+    <mods:digitalOrigin>reformatted digital</mods:digitalOrigin>
+  </mods:physicalDescription>
   <mods:titleInfo>
     <mods:title>é. 1 Test</mods:title>
     <mods:partName>part #1</mods:partName>
     <mods:partNumber>1</mods:partNumber>
+  </mods:titleInfo>
+  <mods:titleInfo type="alternative" displayLabel="display">
+    <mods:title>Alt Title</mods:title>
+    <mods:nonSort>The</mods:nonSort>
   </mods:titleInfo>
   <mods:identifier type="local" displayLabel="Original no.">1591</mods:identifier>
   <mods:identifier type="local" displayLabel="PN_DB_id">321</mods:identifier>
@@ -283,10 +291,6 @@ class TestMapper(unittest.TestCase):
   <mods:language>
     <mods:languageTerm authority="iso639-2b" type="code">eng</mods:languageTerm>
   </mods:language>
-  <mods:physicalDescription>
-    <mods:extent>1 video file</mods:extent>
-    <mods:digitalOrigin>reformatted digital</mods:digitalOrigin>
-  </mods:physicalDescription>
   <mods:relatedItem type="related item" displayLabel="display">
     <mods:titleInfo>
       <mods:title>Some related item display title</mods:title>
@@ -306,9 +310,11 @@ class TestMapper(unittest.TestCase):
         m1.add_data(u'<mods:identifier type="local" displayLabel="Original no.">', u'1591')
         m1.add_data(u'<mods:subject><mods:topic>', u'Recursion')
         # this one isn't added again, and should still be in the output
-        m1.add_data(u'<mods:titleInfo><mods:title>#<mods:partName>#<mods:partNumber>', u'é. 1 Test#part \#1#1')
+        m1.add_data(u'<mods:physicalDescription><mods:extent>#<mods:digitalOrigin>', u'1 video file#reformatted digital')
         #add all data as unicode, since that's how it should be coming from DataHandler
         m = Mapper(parent_mods=m1.get_mods())
+        m.add_data(u'<mods:titleInfo><mods:title>#<mods:partName>#<mods:partNumber>', u'é. 1 Test#part \#1#1')
+        m.add_data(u'<mods:titleInfo type="alternative" displayLabel="display"><mods:title>#<mods:nonSort>', u'Alt Title#The')
         m.add_data(u'<mods:identifier type="local" displayLabel="Original no.">', u'1591')
         m.add_data(u'<mods:identifier type="local" displayLabel="PN_DB_id">', u'321')
         m.add_data(u'<mods:genre authority="aat">', u'Programming Tests')
@@ -331,7 +337,6 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:note>', u'another note')
         m.add_data(u'<mods:typeOfResource>', u'video')
         m.add_data(u'<mods:language><mods:languageTerm authority="iso639-2b" type="code">', u'eng')
-        m.add_data(u'<mods:physicalDescription><mods:extent>#<mods:digitalOrigin>', u'1 video file#reformatted digital')
         m.add_data(u'<mods:relatedItem type="related item" displayLabel="display"><mods:titleInfo><mods:title>', u'Some related item display title')
         m.add_data(u'<mods:originInfo><mods:dateIssued encoding="w3cdtf">', u'1974-01-01')
         m.add_data(u'<mods:originInfo><mods:dateCaptured encoding="w3cdtf">', u'1975-01-01')
@@ -344,8 +349,6 @@ class TestMapper(unittest.TestCase):
         self.assertEqual(mods.title_info_list[0].title, u'é. 1 Test')
         self.assertEqual(mods.title_info_list[0].part_number, u'1')
         self.assertEqual(mods.title_info_list[0].part_name, u'part #1')
-        #print('mods_data:\n%s' % mods_data)
-        #print('FULL_MODS:\n%s' % self.FULL_MODS)
         #this does assume that the attributes will always be written out in the same order
         self.assertEqual(mods_data, self.FULL_MODS)
 

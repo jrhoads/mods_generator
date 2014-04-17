@@ -380,7 +380,7 @@ class Mapper(object):
             if not self._cleared_fields.get(u'title_info_list', None):
                 self._mods.title_info_list = []
                 self._cleared_fields[u'title_info_list'] = True
-            self._add_title_data(location_sections, data_vals)
+            self._add_title_data(base_element, location_sections, data_vals)
         elif base_element[u'element'] == u'mods:language':
             if not self._cleared_fields.get(u'languages', None):
                 self._mods.languages = []
@@ -520,10 +520,13 @@ class Mapper(object):
             logger.error('element not handled! %s' % base_element)
             raise Exception('element not handled!')
 
-    def _add_title_data(self, location_sections, data_vals):
-        for data in data_vals:
+    def _add_title_data(self, base_element, location_sections, data_vals):
+        for data_divs in data_vals:
             title = mods.TitleInfo()
-            data_divs = data
+            if u'type' in base_element['attributes']:
+                title.type = base_element['attributes']['type']
+            if u'displayLabel' in base_element['attributes']:
+                title.label = base_element['attributes']['displayLabel']
             for section, div in zip(location_sections, data_divs):
                 for element in section:
                     if element[u'element'] == u'mods:title':
@@ -532,6 +535,8 @@ class Mapper(object):
                         title.part_name = div
                     elif element[u'element'] == u'mods:partNumber':
                         title.part_number = div
+                    elif element[u'element'] == u'mods:nonSort':
+                        title.non_sort = div
             self._mods.title_info_list.append(title)
 
     def _get_data_divs(self, data, has_sectioned_data):
