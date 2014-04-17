@@ -522,7 +522,9 @@ class Mapper(object):
     def _add_title_data(self, location_sections, data_vals):
         for data in data_vals:
             title = mods.TitleInfo()
-            for section, div in zip(location_sections, data.split(u'#')):
+            data_divs = self._get_data_divs(data)
+            #data_divs = data.split(u'#')
+            for section, div in zip(location_sections, data_divs):
                 for element in section:
                     if element[u'element'] == u'mods:title':
                         title.title = div
@@ -531,6 +533,31 @@ class Mapper(object):
                     elif element[u'element'] == u'mods:partNumber':
                         title.part_number = div
             self._mods.title_info_list.append(title)
+
+    def _get_data_divs(self, data):
+        data_divs = []
+        #split data into its divisions based on '#', but allow \ to escape the #
+        while data:
+            ind = data.find(u'#')
+            if ind == -1:
+                data_divs.append(data)
+                data = ''
+            else:
+                if data[ind-1] == u'\\':
+                    remove_ind = ind-1
+                    ind = data.find(u'#', ind+1)
+                    if ind == -1:
+                        data = data[:remove_ind] + data[remove_ind+1:]
+                        data_divs.append(data)
+                        data = ''
+                    else:
+                        data_divs.append(data[:remove_ind] + data[remove_ind+1:ind])
+                        data = data[ind+1:]
+                else:
+                    data_divs.append(data[:ind])
+                    data = data[ind+1:]
+        return data_divs
+
 
     def _add_name_data(self, base_element, location_sections, data_vals):
         '''Method to handle more complicated name data. '''

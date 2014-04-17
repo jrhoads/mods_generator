@@ -204,7 +204,7 @@ class TestMapper(unittest.TestCase):
 <mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-4.xsd">
   <mods:titleInfo>
     <mods:title>é. 1 Test</mods:title>
-    <mods:partName>part 1</mods:partName>
+    <mods:partName>part #1</mods:partName>
     <mods:partNumber>1</mods:partNumber>
   </mods:titleInfo>
   <mods:identifier type="local" displayLabel="Original no.">1591</mods:identifier>
@@ -306,7 +306,7 @@ class TestMapper(unittest.TestCase):
         m1.add_data(u'<mods:identifier type="local" displayLabel="Original no.">', u'1591')
         m1.add_data(u'<mods:subject><mods:topic>', u'Recursion')
         # this one isn't added again, and should still be in the output
-        m1.add_data(u'<mods:titleInfo><mods:title>#<mods:partName>#<mods:partNumber>', u'é. 1 Test#part 1#1')
+        m1.add_data(u'<mods:titleInfo><mods:title>#<mods:partName>#<mods:partNumber>', u'é. 1 Test#part \#1#1')
         #add all data as unicode, since that's how it should be coming from DataHandler
         m = Mapper(parent_mods=m1.get_mods())
         m.add_data(u'<mods:identifier type="local" displayLabel="Original no.">', u'1591')
@@ -343,11 +343,18 @@ class TestMapper(unittest.TestCase):
         self.assertTrue(isinstance(mods, Mods))
         self.assertEqual(mods.title_info_list[0].title, u'é. 1 Test')
         self.assertEqual(mods.title_info_list[0].part_number, u'1')
-        self.assertEqual(mods.title_info_list[0].part_name, u'part 1')
+        self.assertEqual(mods.title_info_list[0].part_name, u'part #1')
         #print('mods_data:\n%s' % mods_data)
         #print('FULL_MODS:\n%s' % self.FULL_MODS)
         #this does assume that the attributes will always be written out in the same order
         self.assertEqual(mods_data, self.FULL_MODS)
+
+    def test_get_data_divs(self):
+        m = Mapper()
+        self.assertEqual(m._get_data_divs(u'part1#part2#part3'), [u'part1', u'part2', u'part3'])
+        self.assertEqual(m._get_data_divs(u'part\#1#part2#part\#3'), [u'part#1', u'part2', u'part#3'])
+        self.assertEqual(m._get_data_divs(u'part\#1 and \#1a#part2#part\#3'), [u'part#1 and #1a', u'part2', u'part#3'])
+
 
 if __name__ == '__main__':
     runner = unittest.TextTestRunner(verbosity=2)
