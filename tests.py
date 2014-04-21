@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
-#Tests for generate_mods.py
-
 import unittest
 import os
 
@@ -201,7 +198,7 @@ class TestMapper(unittest.TestCase):
 <mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-4.xsd"/>
 '''
     FULL_MODS = u'''<?xml version='1.0' encoding='UTF-8'?>
-<mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-4.xsd">
+<mods:mods xmlns:mods="http://www.loc.gov/mods/v3" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-4.xsd" ID="mods000">
   <mods:physicalDescription>
     <mods:extent>1 video file</mods:extent>
     <mods:digitalOrigin>reformatted digital</mods:digitalOrigin>
@@ -313,6 +310,7 @@ class TestMapper(unittest.TestCase):
         m1.add_data(u'<mods:physicalDescription><mods:extent>#<mods:digitalOrigin>', u'1 video file#reformatted digital')
         #add all data as unicode, since that's how it should be coming from DataHandler
         m = Mapper(parent_mods=m1.get_mods())
+        m.add_data(u'<mods:mods ID="">', u'mods000')
         m.add_data(u'<mods:titleInfo><mods:title>#<mods:partName>#<mods:partNumber>', u'é. 1 Test#part \#1#1')
         m.add_data(u'<mods:titleInfo type="alternative" displayLabel="display"><mods:title>#<mods:nonSort>', u'Alt Title#The')
         m.add_data(u'<mods:identifier type="local" displayLabel="Original no.">', u'1591')

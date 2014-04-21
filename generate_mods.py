@@ -364,7 +364,10 @@ class Mapper(object):
         #strip any empty data sections so we don't have to worry about it below
         data_vals = [self._get_data_divs(data, loc.has_sectioned_data) for data in data_vals if data]
         #handle various MODS elements
-        if base_element['element'] == u'mods:name':
+        if base_element['element'] == u'mods:mods':
+            if 'ID' in base_element['attributes']:
+                self._mods.id = data_vals[0][0]
+        elif base_element['element'] == u'mods:name':
             if not self._cleared_fields.get(u'names', None):
                 self._mods.names = []
                 self._cleared_fields[u'names'] = True
