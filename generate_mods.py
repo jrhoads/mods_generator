@@ -127,7 +127,7 @@ class DataHandler(object):
 
     def get_id_col(self):
         '''Get index of column that contains id (or filename).'''
-        ID_NAMES = [u'record name', u'filename', u'id', u'file names', u'file id']
+        ID_NAMES = [u'record name', u'filename', u'id', u'file names', u'file id', u'tracker item id']
         #try control row first
         for i, val in enumerate(self.get_control_row()):
             if val.lower() in ID_NAMES:
