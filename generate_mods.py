@@ -70,7 +70,6 @@ class DataHandler(object):
         If that fails, try opening it as a CSV file.
         Exit with error if CSV doesn't work.
         '''
-        logger.info('Opening "%s"' % filename)
         #set the date override value
         self.forceDates = forceDates
         self.inputEncoding = inputEncoding
@@ -143,7 +142,12 @@ class DataHandler(object):
 
     def get_id_col(self):
         '''Get index of column that contains id for tying children to parents'''
-        ID_NAMES = [u'id', u'tracker item id', u'record name', u'filename', u'file names', u'file id']
+        ID_NAMES = [u'id', u'tracker item id', u'record name', u'file id']
+        return self._get_col_from_id_names(ID_NAMES)
+
+    def get_filename_col(self):
+        '''Get index of column that contains data file name.'''
+        ID_NAMES = [u'file name', u'filename']
         return self._get_col_from_id_names(ID_NAMES)
 
     def get_cols_to_map(self):
@@ -810,7 +814,7 @@ def process(dataHandler):
             #we're processing a child record
             parent_mods = load_xmlobject_from_file(parent_filename, mods.Mods)
             if mods_id_col:
-                filename = get_mods_filename(parent_id, row[mods_id_col])
+                filename = get_mods_filename(parent_id, row[mods_id_col].strip())
             else:
                 filename = get_mods_filename(parent_id)
         else:
