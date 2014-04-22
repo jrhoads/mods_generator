@@ -125,33 +125,26 @@ class DataHandler(object):
         '''Retrieve the row that controls MODS mapping locations.'''
         return self.get_row(self.ctrlRow)
 
-    def get_id_col(self):
-        '''Get index of column that contains id (or filename).'''
-        ID_NAMES = [u'record name', u'filename', u'id', u'file names', u'file id', u'tracker item id']
+    def _get_col_from_id_names(self, id_names):
         #try control row first
         for i, val in enumerate(self.get_control_row()):
-            if val.lower() in ID_NAMES:
+            if val.lower() in id_names:
                 return i
         #try first row if needed
         for i, val in enumerate(self.get_row(1)):
-            if val.lower() in ID_NAMES:
+            if val.lower() in id_names:
                 return i
         #return None if we didn't find anything
         return None
 
-    def get_filename_col(self):
-        '''Get index of column that contains filename (this may be the same as id col).'''
-        ID_NAMES = [u'filename', u'file names']
-        #try control row first
-        for i, val in enumerate(self.get_control_row()):
-            if val.lower() in ID_NAMES:
-                return i
-        #try first row if needed
-        for i, val in enumerate(self.get_row(1)):
-            if val.lower() in ID_NAMES:
-                return i
-        #return None if we didn't find anything
-        return None
+    def get_mods_id_col(self):
+        ID_NAMES = [u'mods id']
+        return self._get_col_from_id_names(ID_NAMES)
+
+    def get_id_col(self):
+        '''Get index of column that contains id for tying children to parents'''
+        ID_NAMES = [u'id', u'tracker item id', u'record name', u'filename', u'file names', u'file id']
+        return self._get_col_from_id_names(ID_NAMES)
 
     def get_cols_to_map(self):
         '''Get a dict of columns & values in dataset that should be mapped to MODS
@@ -779,6 +772,22 @@ class LocationParser(object):
         return attributes
 
 
+def get_mods_filename(parent_id, mods_id=None):
+    #use a mods id value if available
+    #otherwise, take the id and loop until we get a filename that doesn't exist yet
+    if mods_id:
+        base_filename = mods_id
+    else:
+        base_filename = parent_id
+    filename = os.path.join(MODS_DIR, '%s.mods' % base_filename)
+    ext = 1
+    while os.path.exists(filename):
+        filename = os.path.join(MODS_DIR, base_filename + u'_' 
+            + str(ext) + u'.mods')
+        ext += 1
+    return filename
+
+
 def process(dataHandler):
     '''Function to go through all the data and process it.'''
     #get dicts of columns that should be mapped & where they go in MODS
@@ -787,25 +796,26 @@ def process(dataHandler):
     if id_col is None:
         logger.error('Could not get id column!')
         sys.exit(1)
-    filename_col = dataHandler.get_filename_col()
-    if not filename_col:
-        filename_col = id_col
+    mods_id_col = dataHandler.get_mods_id_col()
     index = 1
     for row in dataHandler.get_data_rows():
-        filename = row[filename_col].strip()
-        if len(filename) == 0:
-            logger.warning('No filename defined for row %d. Skipping.' % (index))
+        parent_id = row[id_col].strip() #this is the id that ties parent to children
+        if not parent_id:
+            logger.warning('No parent_id defined for row %d. Skipping.' % (index))
             continue
-        filename = os.path.join(MODS_DIR, filename + u'.mods')
+        parent_filename = os.path.join(MODS_DIR, parent_id + u'.mods')
         #load parent mods object if it exists
         parent_mods = None
-        if os.path.exists(filename):
-            parent_mods = load_xmlobject_from_file(filename, mods.Mods)
-        ext = 1
-        while os.path.exists(filename):
-            filename = os.path.join(MODS_DIR, row[id_col].strip() + u'_' 
-                + str(ext) + u'.mods')
-            ext += 1
+        if os.path.exists(parent_filename):
+            #we're processing a child record
+            parent_mods = load_xmlobject_from_file(parent_filename, mods.Mods)
+            if mods_id_col:
+                filename = get_mods_filename(parent_id, row[mods_id_col])
+            else:
+                filename = get_mods_filename(parent_id)
+        else:
+            #we're processing a parent record
+            filename = parent_filename
         logger.info('Processing row %d to %s.' % (index, filename))
         mapper = Mapper(parent_mods=parent_mods)
         #for each column that should be mapped, pass the mapping
