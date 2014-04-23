@@ -94,69 +94,73 @@ class TestDataHandler(unittest.TestCase):
 
     def test_xls(self):
         dh = DataHandler(os.path.join('test_files', 'data.xls'))
-        ctrlRow = dh.get_control_row()
-        self.assertEqual(dh.get_id_col(), 2)
-        dataRows = []
-        for row in dh.get_data_rows():
-            dataRows.append(row)
-        self.assertEqual(len(dataRows), 2)
-        self.assertEqual(dataRows[0][7], u'Test 1')
-        self.assertEqual(ctrlRow[3], u'<mods:identifier type="local" displayLabel="Originăl noé.">')
-        row3 = dh.get_row(3)
-        self.assertEqual(row3[7], u'Test 1')
-        for cell in row3:
-            self.assertTrue(isinstance(cell, unicode))
+        mods_records = dh.get_mods_records()
+        self.assertEqual(len(mods_records), 2)
+        self.assertTrue(isinstance(mods_records[0].field_data()[0]['mods_path'], unicode))
+        self.assertTrue(isinstance(mods_records[0].field_data()[0]['data'], unicode))
+        self.assertEqual(mods_records[0].field_data()[0]['mods_path'], u'<mods:identifier type="local" displayLabel="Originăl noé.">')
+        self.assertEqual(mods_records[0].field_data()[0]['data'], u'123')
+        self.assertEqual(mods_records[0].field_data()[2]['mods_path'], u'<mods:titleInfo><mods:title>')
+        self.assertEqual(mods_records[0].field_data()[2]['data'], u'Test 1')
+        self.assertEqual(mods_records[0].id, u'test1')
+        self.assertEqual(mods_records[1].id, u'test2')
+        self.assertEqual(mods_records[0].mods_id, u'test1')
+        self.assertEqual(mods_records[1].mods_id, u'test2')
         #test that process_text_date is working right
-        self.assertEqual(row3[11], u'2005-10-21')
-        self.assertEqual(row3[22], u'2005-10-10')
+        self.assertEqual(mods_records[0].field_data()[4]['data'], u'2005-10-21')
         #test that we can get the second sheet correctly
         dh = DataHandler(os.path.join('test_files', 'data.xls'), sheet=2)
-        row3 = dh.get_row(3)
-        self.assertEqual(row3[11], u'2008-10-21')
-        dataRows = []
-        for row in dh.get_data_rows():
-            dataRows.append(row)
-        self.assertEqual(len(dataRows), 1)
+        mods_records = dh.get_mods_records()
+        self.assertEqual(len(mods_records), 1)
+        self.assertEqual(mods_records[0].mods_id, u'mods0001')
+        self.assertEqual(mods_records[0].field_data()[5]['data'], u'2008-10-21')
 
     def test_xlsx(self):
-        dh = DataHandler(os.path.join('test_files', 'data.xlsx'))
-        #get list of unicode objects
-        ctrlRow = dh.get_control_row()
-        self.assertEqual(dh.get_id_col(), 2)
-        data_rows = []
-        for row in dh.get_data_rows():
-            data_rows.append(row)
-        self.assertEqual(len(data_rows), 2)
-        self.assertEqual(ctrlRow[3], u'<mods:identifier type="local" displayLabel="Originăl noé.">')
-        row3 = dh.get_row(3)
-        for cell in row3:
-            self.assertTrue(isinstance(cell, unicode))
-        self.assertEqual(row3[11], u'2005-10-21')
-        self.assertEqual(row3[22], u'2005-10-10')
+        dh = DataHandler(os.path.join('test_files', 'data.xlsx'), obj_type='child')
+        mods_records = dh.get_mods_records()
+        self.assertEqual(mods_records[0].id, u'test1')
+        self.assertEqual(len(mods_records), 2)
+        self.assertTrue(isinstance(mods_records[0].field_data()[0]['mods_path'], unicode))
+        self.assertTrue(isinstance(mods_records[0].field_data()[0]['data'], unicode))
+        self.assertEqual(mods_records[0].field_data()[0]['mods_path'], u'<mods:identifier type="local" displayLabel="Originăl noé.">')
+        self.assertEqual(mods_records[0].field_data()[0]['data'], u'123')
+        self.assertEqual(mods_records[0].field_data()[2]['mods_path'], u'<mods:titleInfo><mods:title>')
+        self.assertEqual(mods_records[0].field_data()[2]['data'], u'Test 1')
+        self.assertEqual(mods_records[0].field_data()[4]['data'], u'2005-10-21')
+        self.assertEqual(mods_records[0].id, u'test1')
+        self.assertEqual(mods_records[0].mods_id, u'test1_1') #_1 because it's a child
+        self.assertEqual(mods_records[1].id, u'test1')
+        self.assertEqual(mods_records[1].mods_id, u'test1_2')
 
     def test_csv(self):
         dh = DataHandler(os.path.join('test_files', 'data.csv'))
-        ctrlRow = dh.get_control_row()
-        for cell in ctrlRow:
-            self.assertTrue(isinstance(cell, unicode))
-        self.assertEqual(dh.get_id_col(), 2)
-        data_rows = []
-        for row in dh.get_data_rows():
-            data_rows.append(row)
-        self.assertEqual(len(data_rows), 2)
-        self.assertEqual(ctrlRow[3], u'<mods:identifier type="local" displayLabel="Originăl noé.">')
+        mods_records = dh.get_mods_records()
+        self.assertEqual(mods_records[0].id, u'test1')
+        self.assertEqual(len(mods_records), 2)
+        self.assertTrue(isinstance(mods_records[0].field_data()[0]['mods_path'], unicode))
+        self.assertTrue(isinstance(mods_records[0].field_data()[0]['data'], unicode))
+        self.assertEqual(mods_records[0].field_data()[0]['mods_path'], u'<mods:identifier type="local" displayLabel="Originăl noé.">')
+        self.assertEqual(mods_records[0].field_data()[0]['data'], u'123')
+        self.assertEqual(mods_records[0].field_data()[2]['mods_path'], u'<mods:titleInfo><mods:title>')
+        self.assertEqual(mods_records[0].field_data()[2]['data'], u'Test 1')
+        self.assertEqual(mods_records[0].id, u'test1')
+        self.assertEqual(mods_records[1].id, u'test2')
+        self.assertEqual(mods_records[0].field_data()[4]['data'], u'2005-10-21')
 
     def test_csv_small(self):
         dh = DataHandler(os.path.join('test_files', 'data-small.csv'))
-        ctrlRow = dh.get_control_row()
-        for cell in ctrlRow:
-            self.assertTrue(isinstance(cell, unicode))
-        self.assertEqual(dh.get_id_col(), 2)
-        data_rows = []
-        for row in dh.get_data_rows():
-            data_rows.append(row)
-        self.assertEqual(len(data_rows), 1)
-        self.assertEqual(ctrlRow[3], u'<mods:identifier type="local" displayLabel="Originăl noé.">')
+        mods_records = dh.get_mods_records()
+        self.assertEqual(mods_records[0].id, u'test1')
+        self.assertEqual(len(mods_records), 1)
+        self.assertTrue(isinstance(mods_records[0].field_data()[0]['mods_path'], unicode))
+        self.assertTrue(isinstance(mods_records[0].field_data()[0]['data'], unicode))
+        self.assertEqual(mods_records[0].field_data()[0]['mods_path'], u'<mods:identifier type="local" displayLabel="Originăl noé.">')
+        self.assertEqual(mods_records[0].field_data()[0]['data'], u'123')
+        self.assertEqual(mods_records[0].field_data()[2]['mods_path'], u'<mods:titleInfo><mods:title>')
+        self.assertEqual(mods_records[0].field_data()[2]['data'], u'Test 1')
+        self.assertEqual(mods_records[0].id, u'test1')
+        self.assertEqual(mods_records[0].field_data()[4]['data'], u'2005-10-21')
+
 
 class TestOther(unittest.TestCase):
     '''Test non-class functions.'''

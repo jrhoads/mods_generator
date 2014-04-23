@@ -55,6 +55,21 @@ logger.addHandler(consoleHandler)
 #directory for mods files
 MODS_DIR = "mods_files"
 
+
+class ModsRecord(object):
+
+    def __init__(self, id, mods_id, field_data):
+        self.id = id #this is what ties parent records to children
+        self.mods_id = mods_id #this object's mods id (from a column or calculated)
+        self.parent_mods_filename = u'%s.mods' % id
+        self.mods_filename = u'%s.mods' % mods_id
+        self._field_data = field_data
+
+    def field_data(self):
+        #return list of {'mods_path': xxx, 'data': xxx}
+        return self._field_data
+
+
 class DataHandler(object):
     '''Handle interacting with the data.
     
@@ -63,17 +78,18 @@ class DataHandler(object):
     which is what xlrd uses, and we convert all CSV data to unicode objects
     as well.
     '''
-    def __init__(self, filename, inputEncoding='utf-8', sheet=1, ctrlRow=2, forceDates=False):
+    def __init__(self, filename, inputEncoding='utf-8', sheet=1, ctrlRow=2, forceDates=False, obj_type='parent'):
         '''Open file and get data from correct sheet.
         
         First, try opening the file as an excel spreadsheet.
         If that fails, try opening it as a CSV file.
         Exit with error if CSV doesn't work.
         '''
+        self.obj_type = obj_type
         #set the date override value
         self.forceDates = forceDates
         self.inputEncoding = inputEncoding
-        self.ctrlRow = ctrlRow
+        self._ctrlRow = ctrlRow
         #open file
         try:
             self.book = xlrd.open_workbook(filename)
@@ -115,18 +131,53 @@ class DataHandler(object):
                 csvFile.close()
                 sys.exit(1)
 
-    def get_data_rows(self):
+    def get_mods_records(self):
+        id_col = self._get_id_col()
+        if id_col is None:
+            raise Exception('no ID column')
+        index = self._ctrlRow
+        mods_records = []
+        mods_ids = {}
+        for data_row in self._get_data_rows():
+            index += 1
+            rec_id = data_row[id_col].strip()
+            if not rec_id:
+                logger.warning('no id on row %s - skipping' % index)
+                continue
+            mods_id_col = self._get_mods_id_col()
+            if mods_id_col is not None:
+                mods_id = data_row[mods_id_col].strip()
+            else:
+                if rec_id in mods_ids:
+                    mods_id = u'%s_%s' % (rec_id, mods_ids[rec_id])
+                    mods_ids[rec_id] = mods_ids[rec_id] + 1
+                else:
+                    if self.obj_type == 'parent':
+                        mods_id = rec_id
+                        mods_ids[rec_id] = 1
+                    else:
+                        mods_id = u'%s_1' % rec_id
+                        mods_ids[rec_id] = 2
+            field_data = []
+            cols_to_map = self.get_cols_to_map()
+            for i, val in enumerate(data_row):
+                if i in cols_to_map and len(val) > 0:
+                    field_data.append({'mods_path': cols_to_map[i], 'data': val})
+            mods_records.append(ModsRecord(rec_id, mods_id, field_data))
+        return mods_records
+
+    def _get_data_rows(self):
         '''data rows will be all the rows after the control row'''
-        for i in xrange(self.ctrlRow+1, self._get_total_rows()+1): #xrange doesn't include the stop value
+        for i in xrange(self._ctrlRow+1, self._get_total_rows()+1): #xrange doesn't include the stop value
             yield self.get_row(i)
 
-    def get_control_row(self):
+    def _get_control_row(self):
         '''Retrieve the row that controls MODS mapping locations.'''
-        return self.get_row(self.ctrlRow)
+        return self.get_row(self._ctrlRow)
 
     def _get_col_from_id_names(self, id_names):
         #try control row first
-        for i, val in enumerate(self.get_control_row()):
+        for i, val in enumerate(self._get_control_row()):
             if val.lower() in id_names:
                 return i
         #try first row if needed
@@ -136,11 +187,11 @@ class DataHandler(object):
         #return None if we didn't find anything
         return None
 
-    def get_mods_id_col(self):
+    def _get_mods_id_col(self):
         ID_NAMES = [u'mods id']
         return self._get_col_from_id_names(ID_NAMES)
 
-    def get_id_col(self):
+    def _get_id_col(self):
         '''Get index of column that contains id for tying children to parents'''
         ID_NAMES = [u'id', u'tracker item id', u'record name', u'file id']
         return self._get_col_from_id_names(ID_NAMES)
@@ -155,7 +206,7 @@ class DataHandler(object):
         (some will just be ignored).
         '''
         cols = {}
-        ctrl_row = self.get_control_row()
+        ctrl_row = self._get_control_row()
         for i, val in enumerate(ctrl_row):
             #we'll assume it's to be mapped if we see the start of a MODS tag
             if val.startswith(u'<mods'):
@@ -171,8 +222,8 @@ class DataHandler(object):
             #In a data column that's mapped to a date field, we could find a text
             #   string that looks like a date - we might want to reformat 
             #   that as well.
-            if index > (self.ctrlRow-1):
-                for i, v in enumerate(self.get_control_row()):
+            if index > (self._ctrlRow-1):
+                for i, v in enumerate(self._get_control_row()):
                     if 'date' in v:
                         if isinstance(row[i], basestring):
                             #we may have a text date, so see if we can understand it
@@ -211,6 +262,14 @@ class DataHandler(object):
                             row[i] = unicode('{0:%Y-%m-%d %H:%M:%S}'.format(d))
         elif self.dataType == 'csv':
             row = self.csvData[index]
+            if index > (self._ctrlRow-1):
+                for i, v in enumerate(self._get_control_row()):
+                    if 'date' in v:
+                        if isinstance(row[i], basestring):
+                            #we may have a text date, so see if we can understand it
+                            # *process_text_date will return a text value of the
+                            #   reformatted date if possible, else the original value
+                            row[i] = process_text_date(row[i], self.forceDates)
         #this final loop should be unnecessary, but it's a final check to
         #   make sure everything is unicode.
         for i, v in enumerate(row):
@@ -795,41 +854,23 @@ def get_mods_filename(parent_id, mods_id=None):
 def process(dataHandler):
     '''Function to go through all the data and process it.'''
     #get dicts of columns that should be mapped & where they go in MODS
-    cols_to_map = dataHandler.get_cols_to_map()
-    id_col = dataHandler.get_id_col()
-    if id_col is None:
-        logger.error('Could not get id column!')
-        sys.exit(1)
-    mods_id_col = dataHandler.get_mods_id_col()
     index = 1
-    for row in dataHandler.get_data_rows():
-        parent_id = row[id_col].strip() #this is the id that ties parent to children
-        if not parent_id:
-            logger.warning('No parent_id defined for row %d. Skipping.' % (index))
-            continue
-        parent_filename = os.path.join(MODS_DIR, parent_id + u'.mods')
+    for record in dataHandler.get_mods_records():
+        parent_filename = os.path.join(MODS_DIR, record.parent_mods_filename)
         #load parent mods object if it exists
         parent_mods = None
         if os.path.exists(parent_filename):
-            #we're processing a child record
             parent_mods = load_xmlobject_from_file(parent_filename, mods.Mods)
-            if mods_id_col:
-                filename = get_mods_filename(parent_id, row[mods_id_col].strip())
-            else:
-                filename = get_mods_filename(parent_id)
-        else:
-            #we're processing a parent record
-            filename = parent_filename
+        filename = record.mods_filename
+        if os.path.exists(os.path.join(MODS_DIR, filename)):
+            raise Exception('%s already exists!' % filename)
         logger.info('Processing row %d to %s.' % (index, filename))
         mapper = Mapper(parent_mods=parent_mods)
-        #for each column that should be mapped, pass the mapping
-        # info and this row's data to the mapper to create the MODS
-        for i, val in enumerate(row):
-            if i in cols_to_map and len(val) > 0:
-                mapper.add_data(cols_to_map[i], val)
+        for field in record.field_data():
+            mapper.add_data(field['mods_path'], field['data'])
         mods_obj = mapper.get_mods()
         mods_data = unicode(mods_obj.serializeDocument(pretty=True), 'utf-8')
-        with codecs.open(filename, 'w', 'utf-8') as f:
+        with codecs.open(os.path.join(MODS_DIR, filename), 'w', 'utf-8') as f:
             f.write(mods_data)
         index = index + 1
 
@@ -838,6 +879,9 @@ if __name__ == '__main__':
     logger.info('Processing dataset to MODS files')
     #get options
     parser = OptionParser()
+    parser.add_option('-t', '--type',
+                    action='store', dest='type', default='parent',
+                    help='type of records (parent or child, default is parent)')
     parser.add_option('--force-dates',
                     action='store_true', dest='force_dates', default=False,
                     help='force date conversion even if ambiguous')
@@ -861,7 +905,7 @@ if __name__ == '__main__':
             #dir creation error - re-raise it
             raise
     #set up data handler & process data
-    dataHandler = DataHandler(args[0], options.in_enc, int(options.sheet), int(options.row), options.force_dates)
+    dataHandler = DataHandler(args[0], options.in_enc, int(options.sheet), int(options.row), options.force_dates, options.type)
     process(dataHandler)
     sys.exit()
 
