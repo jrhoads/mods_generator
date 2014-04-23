@@ -58,12 +58,13 @@ MODS_DIR = "mods_files"
 
 class ModsRecord(object):
 
-    def __init__(self, id, mods_id, field_data):
+    def __init__(self, id, mods_id, field_data, data_files):
         self.id = id #this is what ties parent records to children
         self.mods_id = mods_id #this object's mods id (from a column or calculated)
         self.parent_mods_filename = u'%s.mods' % id
         self.mods_filename = u'%s.mods' % mods_id
         self._field_data = field_data
+        self.data_files = data_files
 
     def field_data(self):
         #return list of {'mods_path': xxx, 'data': xxx}
@@ -138,6 +139,7 @@ class DataHandler(object):
         index = self._ctrlRow
         mods_records = []
         mods_ids = {}
+        data_file_col = self._get_filename_col()
         for data_row in self._get_data_rows():
             index += 1
             rec_id = data_row[id_col].strip()
@@ -163,7 +165,10 @@ class DataHandler(object):
             for i, val in enumerate(data_row):
                 if i in cols_to_map and len(val) > 0:
                     field_data.append({'mods_path': cols_to_map[i], 'data': val})
-            mods_records.append(ModsRecord(rec_id, mods_id, field_data))
+            data_files = []
+            if data_file_col is not None:
+                data_files = [df.strip() for df in data_row[data_file_col].split(u',')]
+            mods_records.append(ModsRecord(rec_id, mods_id, field_data, data_files))
         return mods_records
 
     def _get_data_rows(self):
@@ -196,7 +201,7 @@ class DataHandler(object):
         ID_NAMES = [u'id', u'tracker item id', u'record name', u'file id']
         return self._get_col_from_id_names(ID_NAMES)
 
-    def get_filename_col(self):
+    def _get_filename_col(self):
         '''Get index of column that contains data file name.'''
         ID_NAMES = [u'file name', u'filename']
         return self._get_col_from_id_names(ID_NAMES)
