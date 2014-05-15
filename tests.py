@@ -206,6 +206,7 @@ class TestMapper(unittest.TestCase):
   <mods:physicalDescription>
     <mods:extent>1 video file</mods:extent>
     <mods:digitalOrigin>reformatted digital</mods:digitalOrigin>
+    <mods:note>note 1</mods:note>
   </mods:physicalDescription>
   <mods:titleInfo>
     <mods:title>é. 1 Test</mods:title>
@@ -314,7 +315,7 @@ class TestMapper(unittest.TestCase):
         m1.add_data(u'<mods:identifier type="local" displayLabel="Original no.">', u'1591')
         m1.add_data(u'<mods:subject><mods:topic>', u'Recursion')
         # this one isn't added again, and should still be in the output
-        m1.add_data(u'<mods:physicalDescription><mods:extent>#<mods:digitalOrigin>', u'1 video file#reformatted digital')
+        m1.add_data(u'<mods:physicalDescription><mods:extent>#<mods:digitalOrigin>#<mods:note>', u'1 video file#reformatted digital#note 1')
         #add all data as unicode, since that's how it should be coming from DataHandler
         m = Mapper(parent_mods=m1.get_mods())
         m.add_data(u'<mods:mods ID="">', u'mods000')

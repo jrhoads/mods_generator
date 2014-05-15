@@ -485,6 +485,8 @@ class Mapper(object):
                     self._mods.physical_description.extent = data_divs[index]
                 elif section[0][u'element'] == 'mods:digitalOrigin':
                     self._mods.physical_description.digital_origin = data_divs[index]
+                elif section[0][u'element'] == 'mods:note':
+                    self._mods.physical_description.note = data_divs[index]
         elif base_element['element'] == 'mods:typeOfResource':
             if not self._cleared_fields.get(u'typeOfResource', None):
                 self._mods.resource_type = None
