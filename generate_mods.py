@@ -198,7 +198,7 @@ class DataHandler(object):
 
     def _get_id_col(self):
         '''Get index of column that contains id for tying children to parents'''
-        ID_NAMES = [u'id', u'tracker item id', u'record name', u'file id']
+        ID_NAMES = [u'id', u'tracker item id', u'tracker id', u'record name', u'file id']
         return self._get_col_from_id_names(ID_NAMES)
 
     def _get_filename_col(self):
