@@ -244,6 +244,9 @@ class TestMapper(unittest.TestCase):
   <mods:subject authority="local">
     <mods:topic>Recursion</mods:topic>
   </mods:subject>
+  <mods:subject authority="local">
+    <mods:temporal>1990s</mods:temporal>
+  </mods:subject>
   <mods:subject>
     <mods:geographic>United States</mods:geographic>
   </mods:subject>
@@ -325,6 +328,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:originInfo displayLabel="Date Ądded to Colléction"><mods:dateOther encoding="w3cdtf" keyDate="yes">', u'2010-01-31')
         m.add_data(u'<mods:subject><mods:topic>', u'PROGRĄMMING || Testing')
         m.add_data(u'<mods:subject authority="local"><mods:topic>', u'Recursion || ')
+        m.add_data(u'<mods:subject authority="local"><mods:temporal>', u'1990s')
         m.add_data(u'<mods:subject><mods:geographic>', u'United States')
         m.add_data(u'<mods:subject><mods:hierarchicalGeographic><mods:country>United States</mods:country><mods:state>', u'Pennsylvania')
         m.add_data(u'<mods:name type="personal"><mods:namePart>#<mods:role><mods:roleTerm>', u'Smith#creator || Jones, T.')

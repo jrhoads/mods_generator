@@ -519,6 +519,8 @@ class Mapper(object):
                 section = location_sections[0]
                 if section[0]['element'] == 'mods:topic':
                     subject.topic = data[0]
+                elif section[0]['element'] == 'mods:temporal':
+                    subject.temporal = mods.Temporal(text=data[0])
                 elif section[0]['element'] == 'mods:geographic':
                     subject.geographic = data[0]
                 elif section[0]['element'] == 'mods:hierarchicalGeographic':
