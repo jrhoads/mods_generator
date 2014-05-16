@@ -860,21 +860,24 @@ def get_mods_filename(parent_id, mods_id=None):
     return filename
 
 
-def process(dataHandler):
+def process(dataHandler, copy_parent_to_children=False):
     '''Function to go through all the data and process it.'''
     #get dicts of columns that should be mapped & where they go in MODS
     index = 1
     for record in dataHandler.get_mods_records():
-        parent_filename = os.path.join(MODS_DIR, record.parent_mods_filename)
-        #load parent mods object if it exists
-        parent_mods = None
-        if os.path.exists(parent_filename):
-            parent_mods = load_xmlobject_from_file(parent_filename, mods.Mods)
         filename = record.mods_filename
         if os.path.exists(os.path.join(MODS_DIR, filename)):
             raise Exception('%s already exists!' % filename)
         logger.info('Processing row %d to %s.' % (index, filename))
-        mapper = Mapper(parent_mods=parent_mods)
+        if copy_parent_to_children:
+            #load parent mods object if desired (& it exists)
+            parent_filename = os.path.join(MODS_DIR, record.parent_mods_filename)
+            parent_mods = None
+            if os.path.exists(parent_filename):
+                parent_mods = load_xmlobject_from_file(parent_filename, mods.Mods)
+                mapper = Mapper(parent_mods=parent_mods)
+        else:
+            mapper = Mapper()
         for field in record.field_data():
             mapper.add_data(field['mods_path'], field['data'])
         mods_obj = mapper.get_mods()
@@ -894,6 +897,9 @@ if __name__ == '__main__':
     parser.add_option('--force-dates',
                     action='store_true', dest='force_dates', default=False,
                     help='force date conversion even if ambiguous')
+    parser.add_option('--copy-parent-to-children',
+                    action='store_true', dest='copy_parent_to_children', default=False,
+                    help='copy parent data into children')
     parser.add_option('-s', '--sheet',
                     action='store', dest='sheet', default=1,
                     help='specify the sheet number (starting at 1) in an Excel spreadsheet')
@@ -915,6 +921,6 @@ if __name__ == '__main__':
             raise
     #set up data handler & process data
     dataHandler = DataHandler(args[0], options.in_enc, int(options.sheet), int(options.row), options.force_dates, options.type)
-    process(dataHandler)
+    process(dataHandler, options.copy_parent_to_children)
     sys.exit()
 
