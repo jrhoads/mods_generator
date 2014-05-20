@@ -193,7 +193,7 @@ class DataHandler(object):
         return None
 
     def _get_mods_id_col(self):
-        ID_NAMES = [u'mods id']
+        ID_NAMES = [u'mods id', '<mods:mods id="">']
         return self._get_col_from_id_names(ID_NAMES)
 
     def _get_id_col(self):
@@ -203,7 +203,7 @@ class DataHandler(object):
 
     def _get_filename_col(self):
         '''Get index of column that contains data file name.'''
-        ID_NAMES = [u'file name', u'filename']
+        ID_NAMES = [u'file name', u'filename', u'file_id']
         return self._get_col_from_id_names(ID_NAMES)
 
     def get_cols_to_map(self):
