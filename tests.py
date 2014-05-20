@@ -242,6 +242,10 @@ class TestMapper(unittest.TestCase):
   <mods:subject>
     <mods:topic>Testing</mods:topic>
   </mods:subject>
+  <mods:subject>
+    <mods:topic>Software</mods:topic>
+    <mods:topic>Testing</mods:topic>
+  </mods:subject>
   <mods:subject authority="local">
     <mods:topic>Recursion</mods:topic>
   </mods:subject>
@@ -328,6 +332,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:originInfo><mods:place><mods:placeTerm>', u'USA')
         m.add_data(u'<mods:originInfo displayLabel="Date Ądded to Colléction"><mods:dateOther encoding="w3cdtf" keyDate="yes">', u'2010-01-31')
         m.add_data(u'<mods:subject><mods:topic>', u'PROGRĄMMING || Testing')
+        m.add_data(u'<mods:subject><mods:topic>#<mods:topic>', u'Software#Testing')
         m.add_data(u'<mods:subject authority="local"><mods:topic>', u'Recursion || ')
         m.add_data(u'<mods:subject authority="local"><mods:temporal>', u'1990s')
         m.add_data(u'<mods:subject><mods:geographic>', u'United States')

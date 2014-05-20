@@ -518,23 +518,27 @@ class Mapper(object):
                 subject = mods.Subject()
                 if 'authority' in base_element['attributes']:
                     subject.authority = base_element['attributes']['authority']
-                section = location_sections[0]
-                if section[0]['element'] == 'mods:topic':
-                    subject.topic = data[0]
-                elif section[0]['element'] == 'mods:temporal':
-                    subject.temporal = mods.Temporal(text=data[0])
-                elif section[0]['element'] == 'mods:geographic':
-                    subject.geographic = data[0]
-                elif section[0]['element'] == 'mods:hierarchicalGeographic':
-                    hg = mods.HierarchicalGeographic()
-                    if section[1]['element'] == 'mods:country':
-                        if 'data' in section[1]:
-                            hg.country = section[1]['data']
-                            if section[2]['element'] == 'mods:state':
-                                hg.state = data[0]
-                        else:
-                            hg.country = data[0]
-                    subject.hierarchical_geographic = hg
+                data_divs = data
+                for section, div in zip(location_sections, data_divs):
+                    if section[0]['element'] == 'mods:topic':
+                        topic = mods.Topic(text=div)
+                        subject.topic_list.append(topic)
+                    elif section[0]['element'] == 'mods:temporal':
+                        temporal = mods.Temporal(text=div)
+                        subject.temporal_list.append(temporal)
+                    elif section[0]['element'] == 'mods:geographic':
+                        subject.geographic = div
+                    elif section[0]['element'] == 'mods:hierarchicalGeographic':
+                        print(u'%s' % section)
+                        hg = mods.HierarchicalGeographic()
+                        if section[1]['element'] == 'mods:country':
+                            if 'data' in section[1]:
+                                hg.country = section[1]['data']
+                                if section[2]['element'] == 'mods:state':
+                                    hg.state = div
+                            else:
+                                hg.country = div
+                        subject.hierarchical_geographic = hg
                 self._mods.subjects.append(subject)
         elif base_element['element'] == 'mods:identifier':
             if not self._cleared_fields.get(u'identifiers', None):
