@@ -290,6 +290,7 @@ class TestMapper(unittest.TestCase):
   <mods:note>another note</mods:note>
   <mods:location>
     <mods:physicalLocation>zzz</mods:physicalLocation>
+    <mods:url>http://www.example.com</mods:url>
     <mods:holdingSimple>
       <mods:copyInformation>
         <mods:note>Note 1</mods:note>
@@ -345,7 +346,7 @@ class TestMapper(unittest.TestCase):
         m.add_data(u'<mods:originInfo><mods:dateCreated encoding="w3cdtf">#<mods:dateCreated encoding="w3cdtf" point="start" keyDate="yes">#<mods:dateCreated encoding="w3cdtf" point="end">', u'1972-10-1973-07-07#1972-10#1973-07-07')
         m.add_data(u'<mods:note displayLabel="note label">', u'Note 1&2')
         m.add_data(u'<mods:note>', u'3<4')
-        m.add_data(u'<mods:location><mods:physicalLocation>zzz#<mods:holdingSimple><mods:copyInformation><mods:note>', u'#Note 1')
+        m.add_data(u'<mods:location><mods:physicalLocation>zzz#<mods:url>#<mods:holdingSimple><mods:copyInformation><mods:note>', u'#http://www.example.com#Note 1')
         m.add_data(u'<mods:note>', u'another note')
         m.add_data(u'<mods:typeOfResource>', u'video')
         m.add_data(u'<mods:language><mods:languageTerm authority="iso639-2b" type="code">', u'eng')

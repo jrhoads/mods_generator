@@ -559,7 +559,12 @@ class Mapper(object):
                 loc = mods.Location()
                 data_divs = data
                 for section, div in zip(location_sections, data_divs):
-                    if section[0]['element'] == u'mods:physicalLocation':
+                    if section[0]['element'] == u'mods:url':
+                        if section[0]['data']:
+                            loc.url = section[0]['data']
+                        else:
+                            loc.url = div
+                    elif section[0]['element'] == u'mods:physicalLocation':
                         if section[0]['data']:
                             loc.physical = section[0]['data']
                         else:
